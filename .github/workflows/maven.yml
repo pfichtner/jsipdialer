@@ -31,11 +31,11 @@ jobs:
           fi
       - name: Pack/compress binary
         run: |
-           upx target/com.github.pfichtner.jsipdial.sipclientmain*
+           upx target/com.github.pfichtner.jsipdialer.sipclientmain*
       - name: Upload binary
         uses: actions/upload-artifact@v2
         with:
           name: jsipdialer-${{ matrix.os }}
-          path: target/com.github.pfichtner.jsipdial.sipclientmain*
+          path: target/com.github.pfichtner.jsipdialer.sipclientmain*
 
  
