@@ -71,7 +71,7 @@ public class CallExecutor {
 				"username", connection.username, //
 				"realm=", realm, //
 				"nonce", nonce, //
-				"uri", sipDestination(call), //
+				"uri", sipIdentifier(call.destinationNumber), //
 				"response", md5Hash(format("%s:%s:%s", hash1, nonce, hash2)), //
 				"algorithm", "MD5");
 		return "Digest "
@@ -79,17 +79,16 @@ public class CallExecutor {
 	}
 
 	private MessageToSend inviteMessage(Call call) {
-		var lAddr = connection.localIpAddress();
-		var lPort = connection.localPort();
-		var sipDestination = sipDestination(call);
-		return factory.newMessage("INVITE", sipDestination) //
-				.add("Call-ID", "%010d@%s", call.callId, lAddr) //
-				.add("From", "\"%s\" <%s>;tag=%010d", call.callerName,
-						sip(connection.username, connection.sipServerAddress), call.tagId)
-				.add("Via", "%s/UDP %s:%d;rport=%d", factory.sipVersion(), lAddr, lPort, lPort)
-				.add("To", "<" + sipDestination + ">") //
-				.add("Contact", "\"%s\" <%s:%d;transport=udp>", connection.username, sip(connection.username, lAddr),
-						lPort);
+		var locIpAddr = connection.localIpAddress();
+		var locPort = connection.localPort();
+		var from = sipIdentifier(connection.username);
+		var to = sipIdentifier(call.destinationNumber);
+		return factory.newMessage("INVITE", to) //
+				.add("Call-ID", "%010d@%s", call.callId, locIpAddr) //
+				.add("From", "\"%s\" <%s>;tag=%010d", call.callerName, from, call.tagId)
+				.add("Via", "%s/UDP %s:%d;rport=%d", factory.sipVersion(), locIpAddr, locPort, locPort)
+				.add("To", "<" + to + ">") //
+		;
 	}
 
 	private MessageToSend ackMessage(Call call) {
@@ -101,7 +100,7 @@ public class CallExecutor {
 
 	private MessageToSend byeMessage(Call call) {
 		return copyFromViaToFromAndLastCallFromLastReceived(call.received,
-				factory.newMessage("BYE", sipDestination(call)));
+				factory.newMessage("BYE", sipIdentifier(call.destinationNumber)));
 	}
 
 	private static MessageToSend copyFromViaToFromAndLastCallFromLastReceived(MessageReceived received,
@@ -116,12 +115,8 @@ public class CallExecutor {
 		;
 	}
 
-	private String sipDestination(Call call) {
-		return sip(call.destinationNumber, connection.sipServerAddress);
-	}
-
-	private static String sip(String number, String machine) {
-		return format("sip:%s@%s", number, machine);
+	private String sipIdentifier(String number) {
+		return format("sip:%s@%s", number, connection.sipServerAddress);
 	}
 
 	private static String extractValue(String text, String key) {
