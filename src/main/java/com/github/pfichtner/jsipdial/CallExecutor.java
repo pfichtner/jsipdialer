@@ -1,16 +1,23 @@
 package com.github.pfichtner.jsipdial;
 
 import static com.github.pfichtner.jsipdial.messages.SipStatus.BUSY_HERE;
+import static com.github.pfichtner.jsipdial.messages.SipStatus.CALL_DOES_NOT_EXIST;
 import static com.github.pfichtner.jsipdial.messages.SipStatus.DECLINE;
 import static com.github.pfichtner.jsipdial.messages.SipStatus.OK;
 import static com.github.pfichtner.jsipdial.messages.SipStatus.REQUEST_CANCELLED;
 import static com.github.pfichtner.jsipdial.messages.SipStatus.TRYING;
 import static java.lang.String.format;
+import static java.net.NetworkInterface.getNetworkInterfaces;
+import static java.util.Collections.list;
 import static java.util.stream.Collectors.joining;
 
+import java.net.InetAddress;
+import java.net.SocketException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,6 +26,8 @@ import com.github.pfichtner.jsipdial.messages.MessageReceived;
 import com.github.pfichtner.jsipdial.messages.MessageToSend;
 
 public class CallExecutor {
+
+	private final String locIpAddr = localIpAddress().orElse("0.0.0.0");
 
 	private final Connection connection;
 	private final MessageFactory factory;
@@ -29,7 +38,7 @@ public class CallExecutor {
 	}
 
 	public void execCall(Call call) throws Exception {
-		call.isInProgress(true);
+		call.inProgress(true);
 		while (call.isInProgress()) {
 			if (call.shouldTryInvite()) {
 				call.increaseInvites();
@@ -47,9 +56,9 @@ public class CallExecutor {
 				connection.send(ackMessage(call));
 			} else if (statuscode.is(TRYING)) {
 				connection.send(ackMessage(call));
-			} else if (statuscode.isOneOf(BUSY_HERE, DECLINE, REQUEST_CANCELLED)) {
+			} else if (statuscode.isOneOf(BUSY_HERE, DECLINE, REQUEST_CANCELLED, CALL_DOES_NOT_EXIST)) {
 				connection.send(ackMessage(call));
-				call.isInProgress(false);
+				call.inProgress(false);
 			} else if (statuscode.isUnauthorized() && call.shouldTryInviteWithAuth()) {
 				call.increaseInvitesWithAuth();
 				connection.send(addAuthorization(call, inviteMessage(call)));
@@ -61,25 +70,25 @@ public class CallExecutor {
 		var wwwAuthenticate = call.received.get("WWW-Authenticate");
 		var realm = extractValue(wwwAuthenticate, "realm");
 		var nonce = extractValue(wwwAuthenticate, "nonce");
-		return inviteMessage.add("Authorization", digest(call, realm, nonce));
+		var algorithm = extractValue(wwwAuthenticate, "algorithm");
+		return inviteMessage.add("Authorization", digest(call, realm.get(), nonce.get(), algorithm.orElse("MD5")));
 	}
 
-	private String digest(Call call, String realm, String nonce) {
-		var hash1 = md5Hash(format("%s:%s:%s", connection.username, realm, connection.password));
-		var hash2 = md5Hash(format("INVITE:sip:%s@%s", call.destinationNumber, connection.sipServerAddress));
+	private String digest(Call call, String realm, String nonce, String algorithm) {
+		var hash1 = hash(algorithm, format("%s:%s:%s", connection.username, realm, connection.password));
+		var hash2 = hash(algorithm, format("INVITE:sip:%s@%s", call.destinationNumber, connection.sipServerAddress));
 		var entries = Map.of( //
 				"username", connection.username, //
 				"realm", realm, //
 				"nonce", nonce, //
 				"uri", sipIdentifier(call.destinationNumber), //
-				"response", md5Hash(format("%s:%s:%s", hash1, nonce, hash2)), //
-				"algorithm", "MD5");
+				"response", hash(algorithm, format("%s:%s:%s", hash1, nonce, hash2)), //
+				"algorithm", algorithm);
 		return "Digest "
 				+ entries.entrySet().stream().map(e -> e.getKey() + "=\"" + e.getValue() + "\"").collect(joining(", "));
 	}
 
 	private MessageToSend inviteMessage(Call call) {
-		var locIpAddr = connection.localIpAddress();
 		var locPort = connection.localPort();
 		var from = sipIdentifier(connection.username);
 		var to = sipIdentifier(call.destinationNumber);
@@ -120,15 +129,15 @@ public class CallExecutor {
 		return format("sip:%s@%s", number, connection.sipServerAddress);
 	}
 
-	private static String extractValue(String text, String key) {
+	private static Optional<String> extractValue(String text, String key) {
 		Pattern pattern = Pattern.compile(key + "=\"([^\"]+)\"");
 		Matcher matcher = pattern.matcher(text);
-		return matcher.find() ? matcher.group(1) : null;
+		return Optional.ofNullable(matcher.find() ? matcher.group(1) : null);
 	}
 
-	private static String md5Hash(String input) {
+	private static String hash(String algorithm, String input) {
 		try {
-			MessageDigest md = MessageDigest.getInstance("MD5");
+			MessageDigest md = MessageDigest.getInstance(algorithm);
 			StringBuilder hexString = new StringBuilder();
 			for (byte hashByte : md.digest(input.getBytes())) {
 				hexString.append(format("%02x", hashByte & 0xFF));
@@ -138,4 +147,23 @@ public class CallExecutor {
 			throw new IllegalStateException(e);
 		}
 	}
+
+	private static Optional<String> localIpAddress() {
+		try {
+			var ignoreIfStartsWith = List.of("docker", "br-", "veth");
+			return list(getNetworkInterfaces()).stream().filter(i -> {
+				try {
+					return ignoreIfStartsWith.stream().noneMatch(i.getName()::startsWith) && i.isUp() && !i.isLoopback()
+							&& !i.isVirtual();
+				} catch (SocketException e) {
+					return false;
+				}
+			}).flatMap(i -> list(i.getInetAddresses()).stream())
+					.filter(a -> a.isSiteLocalAddress() && !a.isLoopbackAddress()).findFirst()
+					.map(InetAddress::getHostAddress);
+		} catch (SocketException e) {
+			return Optional.empty();
+		}
+	}
+
 }

@@ -42,11 +42,11 @@ public class Call {
 		return this.isInProgress;
 	}
 
-	public void isInProgress(boolean isInProgress) {
-		if (isInProgress && !this.isInProgress) {
+	public void inProgress(boolean inProgress) {
+		if (inProgress && !this.isInProgress) {
 			this.startTime = currentTimeMillis();
 		}
-		this.isInProgress = isInProgress;
+		this.isInProgress = inProgress;
 	}
 
 	public void increaseInvites() {
