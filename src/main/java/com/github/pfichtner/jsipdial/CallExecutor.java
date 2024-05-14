@@ -86,8 +86,7 @@ public class CallExecutor {
 				.add("Call-ID", "%010d@%s", call.callId, lAddr) //
 				.add("From", "\"%s\" <sip:%s@%s>;tag=%010d", call.callerName, connection.username,
 						connection.sipServerAddress, call.tagId)
-				.add("Via", "%s/UDP %s:%d;branch=%010d;rport=%d", factory.sipVersion(), lAddr, lPort, call.branchId,
-						lPort)
+				.add("Via", "%s/UDP %s:%d;rport=%d", factory.sipVersion(), lAddr, lPort, lPort)
 				.add("To", "<" + sipDestination + ">") //
 				.add("Contact", "\"%s\" <sip:%s@%s:%d;transport=udp>", connection.username, connection.username, lAddr,
 						lPort);
