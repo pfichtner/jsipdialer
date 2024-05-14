@@ -2,7 +2,7 @@ name: GraalVM Native Image builds
 on: [push, pull_request]
 jobs:
   build:
-    name: jsipdial on ${{ matrix.os }}
+    name: jsipdialer on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -31,9 +31,9 @@ jobs:
      - name: Pack/compress binary
        run: |
           upx target/com.github.pfichtner.jsipdial.sipclientmain*
+     - name: Upload binary
+       uses: actions/upload-artifact@v2
+       with:
+         name: jsipdialer-${{ matrix.os }}
+         path: target/com.github.pfichtner.jsipdial.sipclientmain*
 
-#      - name: Upload binary
-#        uses: actions/upload-artifact@v2
-#        with:
-#          name: jsipdial-${{ matrix.os }}
-#          path: jsipdial*
