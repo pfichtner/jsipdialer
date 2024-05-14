@@ -66,7 +66,7 @@ public class CallExecutor {
 
 	private String digest(Call call, String realm, String nonce) {
 		var hash1 = md5Hash(format("%s:%s:%s", connection.username, realm, connection.password));
-		var hash2 = md5Hash(format("INVITE:%s", sipDestination(call)));
+		var hash2 = md5Hash(format("INVITE:sip:%s@%s", call.destinationNumber, connection.sipServerAddress));
 		var entries = Map.of( //
 				"username", connection.username, //
 				"realm=", realm, //
@@ -81,13 +81,15 @@ public class CallExecutor {
 	private MessageToSend inviteMessage(Call call) {
 		var lAddr = connection.localIpAddress();
 		var lPort = connection.localPort();
-		var sipDestination = sipDestination(call);
+		String sipDestination = sipDestination(call);
 		return factory.newMessage("INVITE", sipDestination) //
 				.add("Call-ID", "%010d@%s", call.callId, lAddr) //
-				.add("From", "\"%s\" <%s>", call.callerName, sip(connection.username, connection.sipServerAddress))
-				.add("Via", "%s/UDP %s:%d;rport=%d", factory.sipVersion(), lAddr, lPort, lPort) //
+				.add("From", "\"%s\" <sip:%s@%s>;tag=%010d", call.callerName, connection.username,
+						connection.sipServerAddress, call.tagId)
+				.add("Via", "%s/UDP %s:%d;branch=%010d;rport=%d", factory.sipVersion(), lAddr, lPort, call.branchId,
+						lPort)
 				.add("To", "<" + sipDestination + ">") //
-				.add("Contact", "\"%s\" <%s:%d;transport=udp>", connection.username, sip(connection.username, lAddr),
+				.add("Contact", "\"%s\" <sip:%s@%s:%d;transport=udp>", connection.username, connection.username, lAddr,
 						lPort);
 	}
 
@@ -116,11 +118,7 @@ public class CallExecutor {
 	}
 
 	private String sipDestination(Call call) {
-		return sip(call.destinationNumber, connection.sipServerAddress);
-	}
-
-	private static String sip(String number, String target) {
-		return format("sip:%s@%s", number, target);
+		return format("sip:%s@%s", call.destinationNumber, connection.sipServerAddress);
 	}
 
 	private static String extractValue(String text, String key) {
