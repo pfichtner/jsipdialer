@@ -1,0 +1,25 @@
+name: GraalVM Native Image builds
+on: [push, pull_request]
+jobs:
+  build:
+    name: jsipdial on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '17'
+          distribution: 'graalvm'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          native-image-job-reports: 'true'
+      - name: Build with Maven
+        run: mvn -Pnative package
+#      - name: Upload binary
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: jsipdial-${{ matrix.os }}
+#          path: jsipdial*
