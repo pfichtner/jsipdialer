@@ -81,14 +81,14 @@ public class CallExecutor {
 	private MessageToSend inviteMessage(Call call) {
 		var lAddr = connection.localIpAddress();
 		var lPort = connection.localPort();
-		String sipDestination = sipDestination(call);
+		var sipDestination = sipDestination(call);
 		return factory.newMessage("INVITE", sipDestination) //
 				.add("Call-ID", "%010d@%s", call.callId, lAddr) //
-				.add("From", "\"%s\" <sip:%s@%s>;tag=%010d", call.callerName, connection.username,
-						connection.sipServerAddress, call.tagId)
+				.add("From", "\"%s\" <%s>;tag=%010d", call.callerName,
+						sip(connection.username, connection.sipServerAddress), call.tagId)
 				.add("Via", "%s/UDP %s:%d;rport=%d", factory.sipVersion(), lAddr, lPort, lPort)
 				.add("To", "<" + sipDestination + ">") //
-				.add("Contact", "\"%s\" <sip:%s@%s:%d;transport=udp>", connection.username, connection.username, lAddr,
+				.add("Contact", "\"%s\" <%s:%d;transport=udp>", connection.username, sip(connection.username, lAddr),
 						lPort);
 	}
 
@@ -117,7 +117,11 @@ public class CallExecutor {
 	}
 
 	private String sipDestination(Call call) {
-		return format("sip:%s@%s", call.destinationNumber, connection.sipServerAddress);
+		return sip(call.destinationNumber, connection.sipServerAddress);
+	}
+
+	private static String sip(String number, String machine) {
+		return format("sip:%s@%s", number, machine);
 	}
 
 	private static String extractValue(String text, String key) {
