@@ -31,7 +31,7 @@ jobs:
           fi
       - name: Pack/compress binary
         run: |
-           upx target/jsipdialer*
+           find target/ -type f -executable -exec upx {} +
       - name: Upload binary
         uses: actions/upload-artifact@v2
         with:
