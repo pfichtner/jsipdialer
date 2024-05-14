@@ -30,9 +30,12 @@ public class CallExecutor {
 
 	public void execCall(Call call) throws Exception {
 		call.isInProgress(true);
-		connection.send(inviteMessage(call));
-
 		while (call.isInProgress()) {
+			if (call.shouldTryInvite()) {
+				call.increaseInvites();
+				connection.send(inviteMessage(call));
+			}
+
 			if (call.isTimedout()) {
 				connection.send(byeMessage(call));
 			}
@@ -47,12 +50,11 @@ public class CallExecutor {
 			} else if (statuscode.isOneOf(BUSY_HERE, DECLINE, REQUEST_CANCELLED)) {
 				connection.send(ackMessage(call));
 				call.isInProgress(false);
-			} else if (statuscode.isUnauthorized() && call.authTries < 3) {
+			} else if (statuscode.isUnauthorized() && call.shouldTryInviteWithAuth()) {
+				call.increaseInvitesWithAuth();
 				connection.send(addAuthorization(call, inviteMessage(call)));
-				call.authTries++;
 			}
 		}
-
 	}
 
 	private MessageToSend addAuthorization(Call call, MessageToSend inviteMessage) {
@@ -93,22 +95,23 @@ public class CallExecutor {
 		Pattern pattern = Pattern.compile("<(.*?)>");
 		Matcher matcher = pattern.matcher(call.received.get("To"));
 		String ca = matcher.find() ? matcher.group(1) : null;
-		return copyFromViaToFromLastReceived(call.received,
-				factory.newMessage("ACK", ca).addCopied("Call-ID", call.received));
+		return copyFromViaToFromAndLastCallFromLastReceived(call.received, factory.newMessage("ACK", ca));
 	}
 
 	private MessageToSend byeMessage(Call call) {
-		MessageToSend message = factory.newMessage("BYE", sipDestination(call)).addCopied("Call-ID", call.received);
-		return copyFromViaToFromLastReceived(call.received, message);
+		return copyFromViaToFromAndLastCallFromLastReceived(call.received,
+				factory.newMessage("BYE", sipDestination(call)));
 	}
 
-	private static MessageToSend copyFromViaToFromLastReceived(MessageReceived received, MessageToSend message) {
+	private static MessageToSend copyFromViaToFromAndLastCallFromLastReceived(MessageReceived received,
+			MessageToSend message) {
 		return received == null //
 				? message //
 				: message //
 						.addCopied("From", received) //
 						.addCopied("Via", received) //
 						.addCopied("To", received) //
+						.addCopied("Call-ID", received) //
 		;
 	}
 

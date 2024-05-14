@@ -13,12 +13,15 @@ public class Call {
 
 	int callId = random();
 
-	int authTries;
 	MessageReceived received;
 
 	private final int timeout;
 	private long startTime;
 	private boolean isInProgress;
+
+	private int inviteTries;
+	private int inviteWithAuthTries;
+	private long lastInviteTry;
 
 	public Call(String destinationNumber, String callerName, int timeout) {
 		this.destinationNumber = destinationNumber;
@@ -43,6 +46,24 @@ public class Call {
 			this.startTime = currentTimeMillis();
 		}
 		this.isInProgress = isInProgress;
+	}
+
+	public void increaseInvites() {
+		inviteTries++;
+		lastInviteTry = System.currentTimeMillis();
+	}
+
+	public void increaseInvitesWithAuth() {
+		inviteWithAuthTries++;
+	}
+
+	public boolean shouldTryInvite() {
+		return received == null && inviteWithAuthTries == 0 && inviteTries < 5
+				&& currentTimeMillis() + 30 > lastInviteTry;
+	}
+
+	public boolean shouldTryInviteWithAuth() {
+		return inviteWithAuthTries < 3;
 	}
 
 }
