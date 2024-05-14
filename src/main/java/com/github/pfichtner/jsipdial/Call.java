@@ -11,8 +11,6 @@ public class Call {
 	final String destinationNumber;
 	final String callerName;
 
-	int tagId = random();
-	int branchId = random();
 	int callId = random();
 
 	int authTries;
