@@ -34,6 +34,7 @@
 						<configuration>
 							<mainClass>com.github.pfichtner.jsipdial.SipClientMain</mainClass>
 							<buildArgs>
+								<buildArg>--static</buildArg>
 								<buildArg>-H:+ReportUnsupportedElementsAtRuntime</buildArg>
 							</buildArgs>
 						</configuration>
