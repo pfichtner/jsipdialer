@@ -88,6 +88,7 @@ public class CallExecutor {
 				.add("From", "\"%s\" <%s>;tag=%010d", call.callerName, from, call.tagId)
 				.add("Via", "%s/UDP %s:%d;rport=%d", factory.sipVersion(), locIpAddr, locPort, locPort)
 				.add("To", "<" + to + ">") //
+				.add("Contact", "\"%s\" <%s:%d;transport=udp>", connection.username, from, locPort) //
 		;
 	}
 
