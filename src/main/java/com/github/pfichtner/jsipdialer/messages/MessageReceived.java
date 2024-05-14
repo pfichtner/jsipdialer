@@ -1,4 +1,4 @@
-package com.github.pfichtner.jsipdial.messages;
+package com.github.pfichtner.jsipdialer.messages;
 
 import static java.lang.Integer.parseInt;
 import static java.util.Arrays.asList;

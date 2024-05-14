@@ -1,10 +1,10 @@
-package com.github.pfichtner.jsipdial;
+package com.github.pfichtner.jsipdialer;
 
 import static java.lang.System.currentTimeMillis;
 
 import java.security.SecureRandom;
 
-import com.github.pfichtner.jsipdial.messages.MessageReceived;
+import com.github.pfichtner.jsipdialer.messages.MessageReceived;
 
 public class Call {
 

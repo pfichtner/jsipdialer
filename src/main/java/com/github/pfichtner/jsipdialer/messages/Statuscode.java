@@ -1,4 +1,4 @@
-package com.github.pfichtner.jsipdial.messages;
+package com.github.pfichtner.jsipdialer.messages;
 
 public class Statuscode {
 

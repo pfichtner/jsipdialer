@@ -1,4 +1,4 @@
-package com.github.pfichtner.jsipdial.messages;
+package com.github.pfichtner.jsipdialer.messages;
 
 import static java.lang.String.format;
 import static java.util.function.Function.identity;

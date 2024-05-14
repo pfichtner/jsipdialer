@@ -1,4 +1,4 @@
-package com.github.pfichtner.jsipdial;
+package com.github.pfichtner.jsipdialer;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -7,8 +7,8 @@ import java.net.InetAddress;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.github.pfichtner.jsipdial.messages.MessageReceived;
-import com.github.pfichtner.jsipdial.messages.MessageToSend;
+import com.github.pfichtner.jsipdialer.messages.MessageReceived;
+import com.github.pfichtner.jsipdialer.messages.MessageToSend;
 
 public class Connection implements AutoCloseable {
 

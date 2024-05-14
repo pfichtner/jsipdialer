@@ -1,4 +1,4 @@
-package com.github.pfichtner.jsipdial;
+package com.github.pfichtner.jsipdialer;
 
 import static java.lang.Integer.parseInt;
 
@@ -7,7 +7,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
-import com.github.pfichtner.jsipdial.messages.MessageFactory;
+import com.github.pfichtner.jsipdialer.messages.MessageFactory;
 
 public class SipClientMain {
 

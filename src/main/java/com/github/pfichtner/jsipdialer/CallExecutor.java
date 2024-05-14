@@ -1,11 +1,11 @@
-package com.github.pfichtner.jsipdial;
+package com.github.pfichtner.jsipdialer;
 
-import static com.github.pfichtner.jsipdial.messages.SipStatus.BUSY_HERE;
-import static com.github.pfichtner.jsipdial.messages.SipStatus.CALL_DOES_NOT_EXIST;
-import static com.github.pfichtner.jsipdial.messages.SipStatus.DECLINE;
-import static com.github.pfichtner.jsipdial.messages.SipStatus.OK;
-import static com.github.pfichtner.jsipdial.messages.SipStatus.REQUEST_CANCELLED;
-import static com.github.pfichtner.jsipdial.messages.SipStatus.TRYING;
+import static com.github.pfichtner.jsipdialer.messages.SipStatus.BUSY_HERE;
+import static com.github.pfichtner.jsipdialer.messages.SipStatus.CALL_DOES_NOT_EXIST;
+import static com.github.pfichtner.jsipdialer.messages.SipStatus.DECLINE;
+import static com.github.pfichtner.jsipdialer.messages.SipStatus.OK;
+import static com.github.pfichtner.jsipdialer.messages.SipStatus.REQUEST_CANCELLED;
+import static com.github.pfichtner.jsipdialer.messages.SipStatus.TRYING;
 import static java.lang.String.format;
 import static java.net.NetworkInterface.getNetworkInterfaces;
 import static java.util.Collections.list;
@@ -21,9 +21,9 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.github.pfichtner.jsipdial.messages.MessageFactory;
-import com.github.pfichtner.jsipdial.messages.MessageReceived;
-import com.github.pfichtner.jsipdial.messages.MessageToSend;
+import com.github.pfichtner.jsipdialer.messages.MessageFactory;
+import com.github.pfichtner.jsipdialer.messages.MessageReceived;
+import com.github.pfichtner.jsipdialer.messages.MessageToSend;
 
 public class CallExecutor {
 
