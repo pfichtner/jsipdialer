@@ -28,6 +28,9 @@ jobs:
          elif [[ "${{ matrix.os }}" == 'windows-latest' ]]; then
            choco install upx -y
          fi
+     - name: Pack/compress binary
+       run: |
+          upx target/com.github.pfichtner.jsipdial.sipclientmain*
 
 #      - name: Upload binary
 #        uses: actions/upload-artifact@v2
