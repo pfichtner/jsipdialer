@@ -69,7 +69,7 @@ public class CallExecutor {
 		var hash2 = md5Hash(format("INVITE:sip:%s@%s", call.destinationNumber, connection.sipServerAddress));
 		var entries = Map.of( //
 				"username", connection.username, //
-				"realm=", realm, //
+				"realm", realm, //
 				"nonce", nonce, //
 				"uri", sipIdentifier(call.destinationNumber), //
 				"response", md5Hash(format("%s:%s:%s", hash1, nonce, hash2)), //
