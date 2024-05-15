@@ -18,6 +18,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,7 +29,9 @@ import com.github.pfichtner.jsipdialer.messages.MessageToSend;
 
 public class CallExecutor {
 
-	private final String locIpAddr = localIpAddress().orElse("0.0.0.0");
+	private static final Logger logger = Logger.getLogger(CallExecutor.class.getName());
+
+	private final String locIpAddr = localIpAddress().map(InetAddress::getHostAddress).orElse("0.0.0.0");
 
 	private final Connection connection;
 	private final MessageFactory factory;
@@ -57,6 +61,10 @@ public class CallExecutor {
 			} else if (statuscode.is(TRYING)) {
 				connection.send(ackMessage(call));
 			} else if (statuscode.isOneOf(BUSY_HERE, DECLINE, REQUEST_CANCELLED, CALL_DOES_NOT_EXIST)) {
+				connection.send(ackMessage(call));
+				call.inProgress(false);
+			} else if (statuscode.is(CALL_DOES_NOT_EXIST)) {
+				logger.log(Level.SEVERE, "Error on call handling %s", call.received);
 				connection.send(ackMessage(call));
 				call.inProgress(false);
 			} else if (statuscode.isUnauthorized() && call.shouldTryInviteWithAuth()) {
@@ -148,7 +156,7 @@ public class CallExecutor {
 		}
 	}
 
-	private static Optional<String> localIpAddress() {
+	private static Optional<InetAddress> localIpAddress() {
 		try {
 			var ignoreIfStartsWith = List.of("docker", "br-", "veth");
 			return list(getNetworkInterfaces()).stream().filter(i -> {
@@ -159,8 +167,7 @@ public class CallExecutor {
 					return false;
 				}
 			}).flatMap(i -> list(i.getInetAddresses()).stream())
-					.filter(a -> a.isSiteLocalAddress() && !a.isLoopbackAddress()).findFirst()
-					.map(InetAddress::getHostAddress);
+					.filter(a -> a.isSiteLocalAddress() && !a.isLoopbackAddress()).findFirst();
 		} catch (SocketException e) {
 			return Optional.empty();
 		}
