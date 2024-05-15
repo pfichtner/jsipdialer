@@ -1,12 +1,13 @@
 package com.github.pfichtner.jsipdialer;
 
+import static java.util.logging.Level.INFO;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.github.pfichtner.jsipdialer.messages.MessageReceived;
@@ -21,7 +22,6 @@ public class Connection implements AutoCloseable {
 	private final int sipServerPort;
 	private final DatagramSocket socket;
 
-
 	public Connection(String sipServerAddress, int sipServerPort) throws UnknownHostException, SocketException {
 		this.sipServerAddress = sipServerAddress;
 		this.serverAddress = InetAddress.getByName(sipServerAddress);
@@ -34,7 +34,7 @@ public class Connection implements AutoCloseable {
 	}
 
 	private void send(String message) throws IOException {
-		logger.log(Level.INFO, () -> "Sending: " + message);
+		logger.log(INFO, () -> "Sending: " + message);
 		byte[] sendData = message.getBytes();
 		socket.send(new DatagramPacket(sendData, sendData.length, serverAddress, sipServerPort));
 	}
@@ -44,7 +44,7 @@ public class Connection implements AutoCloseable {
 		DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
 		socket.receive(receivePacket);
 		String response = new String(receivePacket.getData(), 0, receivePacket.getLength());
-		logger.log(Level.INFO, () -> "Response from SIP Server:" + response);
+		logger.log(INFO, () -> "Response from SIP Server:" + response);
 		return MessageReceived.parse(response);
 	}
 

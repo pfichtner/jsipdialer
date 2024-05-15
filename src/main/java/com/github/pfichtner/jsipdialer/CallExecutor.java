@@ -9,6 +9,7 @@ import static com.github.pfichtner.jsipdialer.messages.SipStatus.TRYING;
 import static java.lang.String.format;
 import static java.net.NetworkInterface.getNetworkInterfaces;
 import static java.util.Collections.list;
+import static java.util.logging.Level.SEVERE;
 import static java.util.stream.Collectors.joining;
 
 import java.net.InetAddress;
@@ -64,7 +65,7 @@ public class CallExecutor {
 				connection.send(ackMessage(call));
 			} else if (statuscode.isOneOf(BUSY_HERE, DECLINE, REQUEST_CANCELLED, CALL_DOES_NOT_EXIST)) {
 				if (statuscode.is(CALL_DOES_NOT_EXIST)) {
-					logger.log(Level.SEVERE, "Error on call handling %s", call.received);
+					logger.log(SEVERE, "Error on call handling %s", call.received);
 				}
 				connection.send(ackMessage(call));
 				call.inProgress(false);
