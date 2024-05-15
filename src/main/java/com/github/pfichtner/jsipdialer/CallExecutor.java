@@ -61,10 +61,9 @@ public class CallExecutor {
 			} else if (statuscode.is(TRYING)) {
 				connection.send(ackMessage(call));
 			} else if (statuscode.isOneOf(BUSY_HERE, DECLINE, REQUEST_CANCELLED, CALL_DOES_NOT_EXIST)) {
-				connection.send(ackMessage(call));
-				call.inProgress(false);
-			} else if (statuscode.is(CALL_DOES_NOT_EXIST)) {
-				logger.log(Level.SEVERE, "Error on call handling %s", call.received);
+				if (statuscode.is(CALL_DOES_NOT_EXIST)) {
+					logger.log(Level.SEVERE, "Error on call handling %s", call.received);
+				}
 				connection.send(ackMessage(call));
 				call.inProgress(false);
 			} else if (statuscode.isUnauthorized() && call.shouldTryInviteWithAuth()) {
