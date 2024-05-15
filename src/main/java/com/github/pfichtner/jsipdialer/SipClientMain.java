@@ -27,11 +27,11 @@ public class SipClientMain {
 
 		try {
 			var cmdLine = parser.parse(options, args);
-			try (var connection = new Connection(cmdLine.getOptionValue(SIP_SERVER_ADDRESS),
+			try (var connection = new UdpConnection(cmdLine.getOptionValue(SIP_SERVER_ADDRESS),
 					parseInt(cmdLine.getOptionValue(SIP_SERVER_PORT, "5060")))) {
-				SipConfig config = new SipConfig(cmdLine.getOptionValue(USERNAME, System.getenv("SIP_USERNAME")),
+				var sipConfig = new SipConfig(cmdLine.getOptionValue(USERNAME, System.getenv("SIP_USERNAME")),
 						cmdLine.getOptionValue(PASSWORD, System.getenv("SIP_PASSWORD")));
-				new CallExecutor(connection, config, new MessageFactory()).execCall(new Call( //
+				new CallExecutor(connection, sipConfig, new MessageFactory()).execCall(new Call( //
 						cmdLine.getOptionValue(DESTINATION_NUMBER), //
 						cmdLine.getOptionValue(CALLER_NAME), //
 						parseInt(cmdLine.getOptionValue(TIMEOUT, "15")) //

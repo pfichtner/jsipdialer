@@ -19,7 +19,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -87,7 +86,7 @@ public class CallExecutor {
 	private String digest(Call call, String realm, String nonce, String algorithm) {
 		var hash1 = hash(algorithm, format("%s:%s:%s", config.getUsername(), realm, config.getPassword()));
 		var hash2 = hash(algorithm,
-				format("INVITE:sip:%s@%s", call.destinationNumber, connection.getSipServerAddress()));
+				format("INVITE:sip:%s@%s", call.destinationNumber, connection.remoteServerAddress()));
 		var entries = Map.of( //
 				"username", config.getUsername(), //
 				"realm", realm, //
@@ -137,7 +136,7 @@ public class CallExecutor {
 	}
 
 	private String sipIdentifier(String number) {
-		return format("sip:%s@%s", number, connection.getSipServerAddress());
+		return format("sip:%s@%s", number, connection.remoteServerAddress());
 	}
 
 	private static Optional<String> extractValue(String text, String key) {
