@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -14,22 +16,16 @@ public class Connection implements AutoCloseable {
 
 	private static final Logger logger = Logger.getLogger(Connection.class.getName());
 
-	final String sipServerAddress;
-	final int sipServerPort;
-
-	final String username;
-	final String password;
-
+	private final String sipServerAddress;
 	private final InetAddress serverAddress;
+	private final int sipServerPort;
 	private final DatagramSocket socket;
 
-	public Connection(String sipServerAddress, int sipServerPort, String username, String password) throws Exception {
-		this.sipServerAddress = sipServerAddress;
-		this.sipServerPort = sipServerPort;
-		this.username = username;
-		this.password = password;
 
+	public Connection(String sipServerAddress, int sipServerPort) throws UnknownHostException, SocketException {
+		this.sipServerAddress = sipServerAddress;
 		this.serverAddress = InetAddress.getByName(sipServerAddress);
+		this.sipServerPort = sipServerPort;
 		this.socket = new DatagramSocket();
 	}
 
@@ -50,6 +46,10 @@ public class Connection implements AutoCloseable {
 		String response = new String(receivePacket.getData(), 0, receivePacket.getLength());
 		logger.log(Level.INFO, () -> "Response from SIP Server:" + response);
 		return MessageReceived.parse(response);
+	}
+
+	public String getSipServerAddress() {
+		return sipServerAddress;
 	}
 
 	public int localPort() {

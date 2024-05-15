@@ -34,10 +34,12 @@ public class CallExecutor {
 	private final String locIpAddr = localIpAddress().map(InetAddress::getHostAddress).orElse("0.0.0.0");
 
 	private final Connection connection;
+	private final SipConfig config;
 	private final MessageFactory factory;
 
-	public CallExecutor(Connection connection, MessageFactory messageFactory) {
+	public CallExecutor(Connection connection, SipConfig config, MessageFactory messageFactory) {
 		this.connection = connection;
+		this.config = config;
 		this.factory = messageFactory;
 	}
 
@@ -82,10 +84,11 @@ public class CallExecutor {
 	}
 
 	private String digest(Call call, String realm, String nonce, String algorithm) {
-		var hash1 = hash(algorithm, format("%s:%s:%s", connection.username, realm, connection.password));
-		var hash2 = hash(algorithm, format("INVITE:sip:%s@%s", call.destinationNumber, connection.sipServerAddress));
+		var hash1 = hash(algorithm, format("%s:%s:%s", config.getUsername(), realm, config.getPassword()));
+		var hash2 = hash(algorithm,
+				format("INVITE:sip:%s@%s", call.destinationNumber, connection.getSipServerAddress()));
 		var entries = Map.of( //
-				"username", connection.username, //
+				"username", config.getUsername(), //
 				"realm", realm, //
 				"nonce", nonce, //
 				"uri", sipIdentifier(call.destinationNumber), //
@@ -97,14 +100,14 @@ public class CallExecutor {
 
 	private MessageToSend inviteMessage(Call call) {
 		var locPort = connection.localPort();
-		var from = sipIdentifier(connection.username);
+		var from = sipIdentifier(config.getUsername());
 		var to = sipIdentifier(call.destinationNumber);
 		return factory.newMessage("INVITE", to) //
 				.add("Call-ID", "%010d@%s", call.callId, locIpAddr) //
 				.add("From", "\"%s\" <%s>;tag=%010d", call.callerName, from, call.tagId)
 				.add("Via", "%s/UDP %s:%d;rport=%d", factory.sipVersion(), locIpAddr, locPort, locPort)
 				.add("To", "<" + to + ">") //
-				.add("Contact", "\"%s\" <%s:%d;transport=udp>", connection.username, from, locPort) //
+				.add("Contact", "\"%s\" <%s:%d;transport=udp>", config.getUsername(), from, locPort) //
 		;
 	}
 
@@ -133,7 +136,7 @@ public class CallExecutor {
 	}
 
 	private String sipIdentifier(String number) {
-		return format("sip:%s@%s", number, connection.sipServerAddress);
+		return format("sip:%s@%s", number, connection.getSipServerAddress());
 	}
 
 	private static Optional<String> extractValue(String text, String key) {
