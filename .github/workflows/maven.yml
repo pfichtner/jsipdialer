@@ -22,8 +22,7 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ matrix.os }}" == 'ubuntu-latest' ]]; then
-            echo "upx already present"
-            # sudo apt-get update && sudo apt-get install -y upx
+            command -v upx || sudo apt-get update && sudo apt-get install -y upx
           elif [[ "${{ matrix.os }}" == 'macos-latest' ]]; then
             brew install upx
           elif [[ "${{ matrix.os }}" == 'windows-latest' ]]; then
