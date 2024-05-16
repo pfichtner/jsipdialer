@@ -28,11 +28,12 @@ class CallExecutorTest {
 
 	static final int TIMEOUT_SECONDS = 60;
 
+	SipConfig config = new SipConfig("aSipUser", "secret");
+
 	@Test
 	void noResponseWillTerminateAfterTimeout() throws Exception {
 		ConnectionStub connection = new ConnectionStub();
-		CallExecutor callExecutor = new CallExecutor(connection, new SipConfig("aSipUser", "secret"),
-				new MessageFactory());
+		CallExecutor callExecutor = new CallExecutor(connection, config, new MessageFactory());
 		Call call = new Call("123", "theCallersName", 5);
 
 		callExecutor.execCall(call);
@@ -57,21 +58,21 @@ class CallExecutorTest {
 						emptyList());
 			}
 		};
-		CallExecutor callExecutor = new CallExecutor(connection, new SipConfig("aSipUser", "secret"),
-				new MessageFactory());
+		CallExecutor callExecutor = new CallExecutor(connection, config, new MessageFactory());
 		Call call = new Call("123", "theCallersName", 2 * TIMEOUT_SECONDS);
 
 		callInBackground(callExecutor, call);
 		String key = "Authorization";
 		String expectedValue = """
 				Digest \
-				username="aSipUser", \
+				username="%s", \
 				realm="%s", \
 				nonce="%s", \
 				uri="sip:%s@%s", \
 				response="d7279a9da44929e24abb213421b33f96", \
 				algorithm="MD5"\
-				""".formatted(realm, nonce, call.destinationNumber, connection.remoteServerAddress());
+				""".formatted(config.getUsername(), realm, nonce, call.destinationNumber,
+				connection.remoteServerAddress());
 		await().forever()
 				.until(() -> connection.sent().stream().filter(where(MessageToSend::command, isEqual("INVITE")))
 						.anyMatch(m -> expectedValue.equals(m.lines().get(key))));
