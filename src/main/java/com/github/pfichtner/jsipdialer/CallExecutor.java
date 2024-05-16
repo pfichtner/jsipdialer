@@ -16,12 +16,13 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import com.github.pfichtner.jsipdialer.messages.MessageFactory;
 import com.github.pfichtner.jsipdialer.messages.MessageReceived;
@@ -45,30 +46,35 @@ public class CallExecutor {
 
 	public void execCall(Call call) throws Exception {
 		call.inProgress(true);
-		while (call.isInProgress()) {
+		while (call.isInProgress() && !call.shouldGiveUp()) {
 			if (call.shouldTryInvite()) {
 				call.increaseInvites();
 				connection.send(inviteMessage(call));
 			}
 
-			if (call.isTimedout()) {
+			if (call.shouldTryBye()) {
+				call.increaseBye();
 				connection.send(byeMessage(call));
 			}
 
-			call.received = connection.receive();
-			var statuscode = call.received.statuscode();
+			MessageReceived next = connection.receive();
+			if (next == null) {
+				continue;
+			}
 
-			if (statuscode.is(OK)) {
+			call.setReceived(next);
+
+			if (call.statuscode().is(OK)) {
 				connection.send(ackMessage(call));
-			} else if (statuscode.is(TRYING)) {
+			} else if (call.statuscode().is(TRYING)) {
 				connection.send(ackMessage(call));
-			} else if (statuscode.isOneOf(BUSY_HERE, DECLINE, REQUEST_CANCELLED, CALL_DOES_NOT_EXIST)) {
-				if (statuscode.is(CALL_DOES_NOT_EXIST)) {
+			} else if (call.statuscode().isOneOf(BUSY_HERE, DECLINE, REQUEST_CANCELLED, CALL_DOES_NOT_EXIST)) {
+				if (call.statuscode().is(CALL_DOES_NOT_EXIST)) {
 					logger.log(SEVERE, "Error on call handling %s", call.received);
 				}
 				connection.send(ackMessage(call));
 				call.inProgress(false);
-			} else if (statuscode.isUnauthorized() && call.shouldTryInviteWithAuth()) {
+			} else if (call.statuscode().isUnauthorized() && call.shouldTryInviteWithAuth()) {
 				call.increaseInvitesWithAuth();
 				connection.send(addAuthorization(call, inviteMessage(call)));
 			}
@@ -79,21 +85,21 @@ public class CallExecutor {
 		var wwwAuthenticate = call.received.get("WWW-Authenticate");
 		var realm = extractValue(wwwAuthenticate, "realm");
 		var nonce = extractValue(wwwAuthenticate, "nonce");
-		var algorithm = extractValue(wwwAuthenticate, "algorithm");
-		return inviteMessage.add("Authorization", digest(call, realm.get(), nonce.get(), algorithm.orElse("MD5")));
+		var algorithm = tryExtractValue(wwwAuthenticate, "algorithm").orElse("MD5");
+		return inviteMessage.add("Authorization", digest(call, realm, nonce, algorithm));
 	}
 
 	private String digest(Call call, String realm, String nonce, String algorithm) {
 		var hash1 = hash(algorithm, format("%s:%s:%s", config.getUsername(), realm, config.getPassword()));
 		var hash2 = hash(algorithm,
 				format("INVITE:sip:%s@%s", call.destinationNumber, connection.remoteServerAddress()));
-		var entries = Map.of( //
-				"username", config.getUsername(), //
-				"realm", realm, //
-				"nonce", nonce, //
-				"uri", sipIdentifier(call.destinationNumber), //
-				"response", hash(algorithm, format("%s:%s:%s", hash1, nonce, hash2)), //
-				"algorithm", algorithm);
+		var entries = new LinkedHashMap<String, String>();
+		entries.put("username", config.getUsername()); //
+		entries.put("realm", realm); //
+		entries.put("nonce", nonce); //
+		entries.put("uri", sipIdentifier(call.destinationNumber)); //
+		entries.put("response", hash(algorithm, format("%s:%s:%s", hash1, nonce, hash2))); //
+		entries.put("algorithm", algorithm);
 		return "Digest "
 				+ entries.entrySet().stream().map(e -> e.getKey() + "=\"" + e.getValue() + "\"").collect(joining(", "));
 	}
@@ -139,7 +145,13 @@ public class CallExecutor {
 		return format("sip:%s@%s", number, connection.remoteServerAddress());
 	}
 
-	private static Optional<String> extractValue(String text, String key) {
+	private static String extractValue(String text, String key) {
+		return tryExtractValue(text, key)
+				.orElseThrow(() -> new IllegalStateException("'" + key + "' not found in '" + text + "'"));
+
+	}
+
+	private static Optional<String> tryExtractValue(String text, String key) {
 		Pattern pattern = Pattern.compile(key + "=\"([^\"]+)\"");
 		Matcher matcher = pattern.matcher(text);
 		return Optional.ofNullable(matcher.find() ? matcher.group(1) : null);

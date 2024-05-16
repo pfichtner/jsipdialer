@@ -7,7 +7,9 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import com.github.pfichtner.jsipdialer.messages.MessageReceived;
@@ -27,6 +29,7 @@ public class UdpConnection implements Connection, AutoCloseable {
 		this.serverAddress = InetAddress.getByName(sipServerAddress);
 		this.sipServerPort = sipServerPort;
 		this.socket = new DatagramSocket();
+		this.socket.setSoTimeout((int) TimeUnit.SECONDS.toMillis(1));
 	}
 
 	@Override
@@ -43,10 +46,15 @@ public class UdpConnection implements Connection, AutoCloseable {
 	@Override
 	public MessageReceived receive() throws IOException {
 		byte[] receiveData = new byte[1024];
-		DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-		socket.receive(receivePacket);
-		String response = new String(receivePacket.getData(), 0, receivePacket.getLength());
-		logger.log(INFO, () -> "Response from SIP Server:" + response);
+		String response;
+		try {
+			DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+			socket.receive(receivePacket);
+			response = new String(receivePacket.getData(), 0, receivePacket.getLength());
+			logger.log(INFO, () -> "Response from SIP Server:" + response);
+		} catch (SocketTimeoutException e) {
+			return null;
+		}
 		return MessageReceived.parse(response);
 	}
 

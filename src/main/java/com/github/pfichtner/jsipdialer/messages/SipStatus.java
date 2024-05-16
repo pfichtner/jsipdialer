@@ -12,10 +12,14 @@ public enum SipStatus {
 
 	DECLINE(603);
 
-	final int value;
+	private final int value;
 
 	SipStatus(int value) {
 		this.value = value;
+	}
+
+	public int value() {
+		return value;
 	}
 
 }

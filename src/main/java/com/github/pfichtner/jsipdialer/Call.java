@@ -5,6 +5,7 @@ import static java.lang.System.currentTimeMillis;
 import java.security.SecureRandom;
 
 import com.github.pfichtner.jsipdialer.messages.MessageReceived;
+import com.github.pfichtner.jsipdialer.messages.Statuscode;
 
 public class Call {
 
@@ -23,6 +24,8 @@ public class Call {
 	private int inviteTries;
 	private int inviteWithAuthTries;
 	private long lastInviteTry;
+	private int byeTries;
+	private long lastByeTry;
 
 	public Call(String destinationNumber, String callerName, int timeout) {
 		this.destinationNumber = destinationNumber;
@@ -30,8 +33,8 @@ public class Call {
 		this.timeout = timeout;
 	}
 
-	public boolean isTimedout() {
-		return currentTimeMillis() - startTime >= timeout * 1000;
+	public Statuscode statuscode() {
+		return received == null ? null : received.statuscode();
 	}
 
 	private static int random() {
@@ -65,6 +68,28 @@ public class Call {
 
 	public boolean shouldTryInviteWithAuth() {
 		return inviteWithAuthTries < 3;
+	}
+
+	public boolean shouldTryBye() {
+		return isTimedout() && byeTries < 5 && currentTimeMillis() + 30 > lastByeTry;
+	}
+
+	private boolean isTimedout() {
+		return currentTimeMillis() - startTime >= timeout * 1000;
+	}
+
+	public void increaseBye() {
+		byeTries++;
+		lastByeTry = System.currentTimeMillis();
+	}
+
+	public boolean shouldGiveUp() {
+		return byeTries >= 5;
+	}
+
+	public void setReceived(MessageReceived received) {
+		this.received = received;
+
 	}
 
 }

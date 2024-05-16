@@ -33,7 +33,7 @@ public class Statuscode {
 	}
 
 	public boolean is(SipStatus sipStatus) {
-		return getValue() == sipStatus.value;
+		return getValue() == sipStatus.value();
 	}
 
 	public int getValue() {
