@@ -1,13 +1,47 @@
 package com.github.pfichtner.jsipdialer;
 
 import static java.lang.System.currentTimeMillis;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import java.security.SecureRandom;
+import java.util.concurrent.TimeUnit;
 
 import com.github.pfichtner.jsipdialer.messages.MessageReceived;
 import com.github.pfichtner.jsipdialer.messages.Statuscode;
 
 public class Call {
+
+	private static class Try {
+
+		private final long milliseconds;
+
+		private int maxTries = 1;
+		private long lastTry;
+		public int counter;
+
+		public Try(int amount, TimeUnit timeUnit) {
+			this.milliseconds = timeUnit.toMillis(amount);
+		}
+
+		private Try maxTries(int maxTries) {
+			this.maxTries = maxTries;
+			return this;
+		}
+
+		public void increase() {
+			counter++;
+			lastTry = currentTimeMillis();
+		}
+
+		public boolean nowPossibleNext() {
+			return !limitIsReached() && currentTimeMillis() > lastTry + milliseconds;
+		}
+
+		public boolean limitIsReached() {
+			return counter >= maxTries;
+		}
+
+	}
 
 	final String destinationNumber;
 	final String callerName;
@@ -21,11 +55,9 @@ public class Call {
 	private long startTime;
 	private boolean isInProgress;
 
-	private int inviteTries;
-	private int inviteWithAuthTries;
-	private long lastInviteTry;
-	private int byeTries;
-	private long lastByeTry;
+	private Try inviteTries = new Try(30, MILLISECONDS).maxTries(5);
+	private Try inviteWithAuthTries = new Try(30, MILLISECONDS).maxTries(3);
+	private Try byeTries = new Try(30, MILLISECONDS).maxTries(5);
 
 	public Call(String destinationNumber, String callerName, int timeout) {
 		this.destinationNumber = destinationNumber;
@@ -53,25 +85,25 @@ public class Call {
 	}
 
 	public void increaseInvites() {
-		inviteTries++;
-		lastInviteTry = System.currentTimeMillis();
+		System.currentTimeMillis();
+		inviteTries.increase();
 	}
 
 	public void increaseInvitesWithAuth() {
-		inviteWithAuthTries++;
+		inviteWithAuthTries.increase();
+		;
 	}
 
 	public boolean shouldTryInvite() {
-		return received == null && inviteWithAuthTries == 0 && inviteTries < 5
-				&& currentTimeMillis() + 30 > lastInviteTry;
+		return received == null && inviteWithAuthTries.counter == 0 && inviteTries.nowPossibleNext();
 	}
 
 	public boolean shouldTryInviteWithAuth() {
-		return inviteWithAuthTries < 3;
+		return inviteWithAuthTries.nowPossibleNext();
 	}
 
 	public boolean shouldTryBye() {
-		return isTimedout() && byeTries < 5 && currentTimeMillis() + 30 > lastByeTry;
+		return isTimedout() && byeTries.nowPossibleNext();
 	}
 
 	private boolean isTimedout() {
@@ -79,12 +111,11 @@ public class Call {
 	}
 
 	public void increaseBye() {
-		byeTries++;
-		lastByeTry = System.currentTimeMillis();
+		byeTries.increase();
 	}
 
 	public boolean shouldGiveUp() {
-		return byeTries >= 5;
+		return byeTries.limitIsReached();
 	}
 
 	public void setReceived(MessageReceived received) {

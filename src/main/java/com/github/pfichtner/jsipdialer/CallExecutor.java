@@ -22,7 +22,6 @@ import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import com.github.pfichtner.jsipdialer.messages.MessageFactory;
 import com.github.pfichtner.jsipdialer.messages.MessageReceived;
