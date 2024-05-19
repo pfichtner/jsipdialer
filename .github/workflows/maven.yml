@@ -41,7 +41,7 @@ jobs:
           mkdir -p publish-artifacts
           find target -type f -executable -print0 | tar --null -czf "publish-artifacts/jsipdialer-$(basename "$dir").tar.gz" --files-from=-
       - name: Upload Artifacts
-        uses: actions/upload@v4
+        uses: actions/upload-artifact@v4
         with:
           name: publish-artifacts-${{ matrix.os }}
           path: "publish-artifacts/*"
