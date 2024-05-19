@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junitpioneer.jupiter.SetEnvironmentVariable;
 
 class SipClientMainTest {
 
@@ -93,6 +94,29 @@ class SipClientMainTest {
 			c.assertThat(sipClientMainSpy.connection).isSameAs(sipClientMainSpy.theConnection);
 			c.assertThat(sipClientMainSpy.call.getTimeout()).isEqualTo(SipClientMain.DEFAULT_TIMEOUT);
 		});
+	}
+
+	@Test
+	@SetEnvironmentVariable(key = "SIP_USERNAME", value = "5viaEnv")
+	@SetEnvironmentVariable(key = "SIP_PASSWORD", value = "6viaEnv")
+	void allRequiredParametersSetWhereUsernameAndPasswordAreSetViaEnvVars() throws Exception {
+		callMain(addValues(required));
+		assertSoftly(c -> {
+			c.assertThat(sipClientMainSpy.server).isEqualTo("1");
+			c.assertThat(sipClientMainSpy.port).isEqualTo(2);
+			c.assertThat(sipClientMainSpy.call.getDestinationNumber()).isEqualTo("3");
+			c.assertThat(sipClientMainSpy.call.getCallerName()).isEqualTo("4");
+			c.assertThat(sipClientMainSpy.sipConfig.getUsername()).isEqualTo("5viaEnv");
+			c.assertThat(sipClientMainSpy.sipConfig.getPassword()).isEqualTo("6viaEnv");
+			c.assertThat(sipClientMainSpy.connection).isSameAs(sipClientMainSpy.theConnection);
+			c.assertThat(sipClientMainSpy.call.getTimeout()).isEqualTo(SipClientMain.DEFAULT_TIMEOUT);
+		});
+	}
+
+	@Test
+	void canSetTimeout() throws Exception {
+		callMain(addValues(and(required, "sipUsername", "sipPassword", "timeout")));
+		assertThat(sipClientMainSpy.call.getTimeout()).isEqualTo(7);
 	}
 
 	@Test
