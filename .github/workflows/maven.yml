@@ -1,5 +1,10 @@
 name: GraalVM Native Image builds
+
 on: [push, pull_request]
+
+permissions:
+  contents: read
+
 jobs:
   build:
     name: jsipdialer on ${{ matrix.os }}
@@ -32,8 +37,31 @@ jobs:
         run: |
            find target/ -type f -executable -exec upx {} +
       - name: Upload binary
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: jsipdialer-${{ matrix.os }}
           path: target/jsipdialer*
+
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    needs: build
+
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Display structure of downloaded files
+        run: ls -R
+
+      - name: Create Release
+        id: create_release
+        uses: ncipollo/release-action@6c75be85e571768fa31b40abf38de58ba0397db5 # v1.13.0
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          artifacts: "jsipdialer-*"
+          makeLatest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
