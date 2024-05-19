@@ -118,6 +118,7 @@
 							<imageName>jsipdialer</imageName>
 							<buildArgs>
 								<buildArg>--static</buildArg>
+								<buildArg>-H:+ReportUnsupportedElementsAtRuntime</buildArg>
 							</buildArgs>
 						</configuration>
 					</execution>
