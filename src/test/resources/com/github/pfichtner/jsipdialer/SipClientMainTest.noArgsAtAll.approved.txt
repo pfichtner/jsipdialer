@@ -1,11 +1,11 @@
 stderr:
-org.apache.commons.cli.MissingOptionException: Missing required options: sipServerAddress, sipServerPort, destinationNumber, callerName
+org.apache.commons.cli.MissingOptionException: Missing required options: sipServerAddress, destinationNumber, callerName
 	at org.apache.commons.cli.DefaultParser.checkRequiredOptions(DefaultParser.java:281)
 	at org.apache.commons.cli.DefaultParser.parse(DefaultParser.java:721)
 	at org.apache.commons.cli.DefaultParser.parse(DefaultParser.java:684)
 	at org.apache.commons.cli.DefaultParser.parse(DefaultParser.java:665)
-	at com.github.pfichtner.jsipdialer.SipClientMain.doMain(SipClientMain.java:41)
-	at com.github.pfichtner.jsipdialer.SipClientMainTest.callMain(SipClientMainTest.java:145)
+	at com.github.pfichtner.jsipdialer.SipClientMain.doMain(SipClientMain.java:42)
+	at com.github.pfichtner.jsipdialer.SipClientMainTest.callMain(SipClientMainTest.java:146)
 	at com.github.pfichtner.jsipdialer.SipClientMainTest.noArgsAtAll(SipClientMainTest.java:67)
 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
@@ -80,10 +80,12 @@ org.apache.commons.cli.MissingOptionException: Missing required options: sipServ
 
 stdout:
 usage: args...
- -callerName <arg>
- -destinationNumber <arg>
- -sipPassword <arg>
+ -callerName <arg>          the caller's name that gets displayed
+ -destinationNumber <arg>   the number to call
+ -sipPassword <arg>         sip password (should better be passed via env
+                            var SIP_PASSWORD)
  -sipServerAddress <arg>    ip/name of the sip server
  -sipServerPort <arg>       port number of the sip server
- -sipUsername <arg>
- -timeout <arg>
+ -sipUsername <arg>         sip username (should better be passed via env
+                            var SIP_USERNAME)
+ -timeout <arg>             terminate call at most after x seconds

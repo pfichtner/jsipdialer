@@ -14,20 +14,21 @@ import com.github.pfichtner.jsipdialer.messages.MessageFactory;
 
 public class SipClientMain {
 
+	public static final int DEFAULT_SIPPORT = 5060;
 	public static final int DEFAULT_TIMEOUT = 15;
 
 	private static final String ENVVAR_SIP_USERNAME = "SIP_USERNAME";
 	private static final String ENVVAR_SIP_PASSWORD = "SIP_PASSWORD";
 
-	private static final String TIMEOUT = "timeout";
-	private static final String CALLER_NAME = "callerName";
 	private static final String DESTINATION_NUMBER = "destinationNumber";
+	private static final String CALLER_NAME = "callerName";
+	private static final String TIMEOUT = "timeout";
 
 	private static final String USERNAME = "sipUsername";
 	private static final String PASSWORD = "sipPassword";
 
-	private static final String SIP_SERVER_PORT = "sipServerPort";
 	private static final String SIP_SERVER_ADDRESS = "sipServerAddress";
+	private static final String SIP_SERVER_PORT = "sipServerPort";
 
 	public static void main(String... args) throws Exception {
 		new SipClientMain().doMain(args);
@@ -50,7 +51,7 @@ public class SipClientMain {
 					parseInt(cmdLine.getOptionValue(TIMEOUT, String.valueOf(DEFAULT_TIMEOUT))) //
 			);
 			Connection connection = makeConnection(cmdLine.getOptionValue(SIP_SERVER_ADDRESS),
-					parseInt(cmdLine.getOptionValue(SIP_SERVER_PORT, "5060")));
+					parseInt(cmdLine.getOptionValue(SIP_SERVER_PORT, String.valueOf(DEFAULT_SIPPORT))));
 			try {
 				execCall(sipConfig, call, connection);
 			} finally {
@@ -82,12 +83,14 @@ public class SipClientMain {
 	private static Options options() {
 		return new Options() //
 				.addRequiredOption(SIP_SERVER_ADDRESS, null, true, "ip/name of the sip server") //
-				.addRequiredOption(SIP_SERVER_PORT, null, true, "port number of the sip server") //
-				.addOption(USERNAME, true, "") //
-				.addOption(PASSWORD, true, "") //
-				.addRequiredOption(DESTINATION_NUMBER, null, true, "") //
-				.addRequiredOption(CALLER_NAME, null, true, "") //
-				.addOption(TIMEOUT, true, "");
+				.addOption(SIP_SERVER_PORT, null, true, "port number of the sip server") //
+				.addOption(USERNAME, true,
+						"sip username (should better be passed via env var " + ENVVAR_SIP_USERNAME + ")") //
+				.addOption(PASSWORD, true,
+						"sip password (should better be passed via env var " + ENVVAR_SIP_PASSWORD + ")") //
+				.addRequiredOption(DESTINATION_NUMBER, null, true, "the number to call") //
+				.addRequiredOption(CALLER_NAME, null, true, "the caller's name that gets displayed") //
+				.addOption(TIMEOUT, true, "terminate call at most after x seconds");
 	}
 
 	private static String envErrorMessage(String name, String envVar) {

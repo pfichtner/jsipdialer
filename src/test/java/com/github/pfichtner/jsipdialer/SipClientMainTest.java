@@ -50,7 +50,7 @@ class SipClientMainTest {
 
 	}
 
-	String[] required = new String[] { "sipServerAddress", "sipServerPort", "destinationNumber", "callerName" };
+	String[] required = new String[] { "sipServerAddress", "destinationNumber", "callerName" };
 
 	SipClientMainSpy sipClientMainSpy = new SipClientMainSpy();
 	ByteArrayOutputStream stdout = new ByteArrayOutputStream();
@@ -86,46 +86,47 @@ class SipClientMainTest {
 		callMain(addValues(and(required, "sipUsername", "sipPassword")));
 		assertSoftly(c -> {
 			c.assertThat(sipClientMainSpy.server).isEqualTo("1");
-			c.assertThat(sipClientMainSpy.port).isEqualTo(2);
-			c.assertThat(sipClientMainSpy.call.getDestinationNumber()).isEqualTo("3");
-			c.assertThat(sipClientMainSpy.call.getCallerName()).isEqualTo("4");
-			c.assertThat(sipClientMainSpy.sipConfig.getUsername()).isEqualTo("5");
-			c.assertThat(sipClientMainSpy.sipConfig.getPassword()).isEqualTo("6");
+			c.assertThat(sipClientMainSpy.port).isEqualTo(SipClientMain.DEFAULT_SIPPORT);
+			c.assertThat(sipClientMainSpy.call.getDestinationNumber()).isEqualTo("2");
+			c.assertThat(sipClientMainSpy.call.getCallerName()).isEqualTo("3");
+			c.assertThat(sipClientMainSpy.sipConfig.getUsername()).isEqualTo("4");
+			c.assertThat(sipClientMainSpy.sipConfig.getPassword()).isEqualTo("5");
 			c.assertThat(sipClientMainSpy.connection).isSameAs(sipClientMainSpy.theConnection);
 			c.assertThat(sipClientMainSpy.call.getTimeout()).isEqualTo(SipClientMain.DEFAULT_TIMEOUT);
 		});
 	}
 
 	@Test
-	@SetEnvironmentVariable(key = "SIP_USERNAME", value = "5viaEnv")
-	@SetEnvironmentVariable(key = "SIP_PASSWORD", value = "6viaEnv")
+	@SetEnvironmentVariable(key = "SIP_USERNAME", value = "4viaEnv")
+	@SetEnvironmentVariable(key = "SIP_PASSWORD", value = "5viaEnv")
 	void allRequiredParametersSetWhereUsernameAndPasswordAreSetViaEnvVars() throws Exception {
 		callMain(addValues(required));
 		assertSoftly(c -> {
 			c.assertThat(sipClientMainSpy.server).isEqualTo("1");
-			c.assertThat(sipClientMainSpy.port).isEqualTo(2);
-			c.assertThat(sipClientMainSpy.call.getDestinationNumber()).isEqualTo("3");
-			c.assertThat(sipClientMainSpy.call.getCallerName()).isEqualTo("4");
-			c.assertThat(sipClientMainSpy.sipConfig.getUsername()).isEqualTo("5viaEnv");
-			c.assertThat(sipClientMainSpy.sipConfig.getPassword()).isEqualTo("6viaEnv");
+			c.assertThat(sipClientMainSpy.port).isEqualTo(SipClientMain.DEFAULT_SIPPORT);
+			c.assertThat(sipClientMainSpy.call.getDestinationNumber()).isEqualTo("2");
+			c.assertThat(sipClientMainSpy.call.getCallerName()).isEqualTo("3");
+			c.assertThat(sipClientMainSpy.sipConfig.getUsername()).isEqualTo("4viaEnv");
+			c.assertThat(sipClientMainSpy.sipConfig.getPassword()).isEqualTo("5viaEnv");
 			c.assertThat(sipClientMainSpy.connection).isSameAs(sipClientMainSpy.theConnection);
 			c.assertThat(sipClientMainSpy.call.getTimeout()).isEqualTo(SipClientMain.DEFAULT_TIMEOUT);
 		});
 	}
 
 	@Test
-	void canSetTimeout() throws Exception {
-		callMain(addValues(and(required, "sipUsername", "sipPassword", "timeout")));
-		assertThat(sipClientMainSpy.call.getTimeout()).isEqualTo(7);
+	void canSetOptionalValues() throws Exception {
+		callMain(addValues(and(required, "sipUsername", "sipPassword", "sipServerPort", "timeout")));
+		assertSoftly(c -> {
+			c.assertThat(sipClientMainSpy.port).isEqualTo(6);
+			c.assertThat(sipClientMainSpy.call.getTimeout()).isEqualTo(7);
+		});
 	}
 
 	@Test
 	void timeoutSetAsWell() throws Exception {
 		callMain(addValues(and(required, "sipUsername", "sipPassword", "timeout")));
-		assertThat(sipClientMainSpy.call.getTimeout()).isEqualTo(7);
+		assertThat(sipClientMainSpy.call.getTimeout()).isEqualTo(6);
 	}
-
-	// TODO test env vars
 
 	private String[] and(String[] strings, String... others) {
 		return concat(Arrays.stream(strings), Arrays.stream(others)).toArray(String[]::new);
