@@ -44,7 +44,7 @@ jobs:
           else
             tarname="${{ github.event.release.tag_name }}_${{ matrix.os }}"
           fi
-          find target -type f -executable -print0 | tar --null -czf "publish-artifacts/jsipdialer_${tarname}.tar.gz" --strip-components=1 --files-from=-
+          (cd target && find . -maxdepth 1 -type f -print0 | tar --null -czf "../publish-artifacts/jsipdialer_${tarname}.tar.gz" --files-from=-)
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
