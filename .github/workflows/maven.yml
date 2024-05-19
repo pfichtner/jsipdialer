@@ -8,10 +8,11 @@ permissions:
 jobs:
   build:
     name: jsipdialer on ${{ matrix.os }}
+    runs-on: ${{ matrix.os == 'darwin' && 'macos-latest' || matrix.os == 'linux' && 'ubuntu-latest' || matrix.os == 'windows' && 'windows-latest' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [linux]
     steps:
       - uses: actions/checkout@v4
 
@@ -22,15 +23,15 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           native-image-job-reports: 'true'
       - name: Build with Maven
-        run: mvn package
+        run: mvn verify
       - name: Install UPX
         shell: bash
         run: |
-          if [[ "${{ matrix.os }}" == 'ubuntu-latest' ]]; then
+          if [[ "${{ matrix.os }}" == 'linux' ]]; then
             command -v upx || sudo apt-get update && sudo apt-get install -y upx
-          elif [[ "${{ matrix.os }}" == 'macos-latest' ]]; then
+          elif [[ "${{ matrix.os }}" == 'darwin' ]]; then
             brew install upx
-          elif [[ "${{ matrix.os }}" == 'windows-latest' ]]; then
+          elif [[ "${{ matrix.os }}" == 'windows' ]]; then
             choco install upx -y
           fi
       - name: Pack/compress binary
@@ -39,7 +40,7 @@ jobs:
       - name: Compress and move files
         run: |
           mkdir -p publish-artifacts
-          find target -type f -executable -print0 | tar --null -czf "publish-artifacts/jsipdialer-$(basename "$dir").tar.gz" --files-from=-
+          find target -type f -executable -print0 | tar --null -czf "publish-artifacts/jsipdialer-${{ matrix.os }}.tar.gz" --files-from=-
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:

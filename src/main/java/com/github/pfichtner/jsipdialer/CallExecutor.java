@@ -110,14 +110,14 @@ public class CallExecutor {
 
 		return factory.newMessage("INVITE", to) //
 				.add("Call-ID", "%010d@%s", call.callId, locIpAddr) //
-				.add("From", prefixCallerName(call, "<%s>".formatted(from)))
+				.add("From", prefixCallerNameIfExistent(call, "<%s>".formatted(from)))
 				.add("Via", "%s/UDP %s:%d;rport=%d", factory.sipVersion(), locIpAddr, locPort, locPort)
 				.add("To", "<" + to + ">") //
 				.add("Contact", "\"%s\" <%s:%d;transport=udp>", config.getUsername(), from, locPort) //
 		;
 	}
 
-	private static String prefixCallerName(Call call, String in) {
+	private static String prefixCallerNameIfExistent(Call call, String in) {
 		return call.getCallerName() == null ? in : "\"%s\" ".formatted(call.getCallerName()) + in;
 	}
 
