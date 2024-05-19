@@ -9,6 +9,8 @@ import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -22,6 +24,9 @@ class SipClientMainTest {
 
 	private final class SipClientMainSpy extends SipClientMain {
 
+		private final Connection theConnection = (Connection) Proxy.newProxyInstance(getClass().getClassLoader(),
+				new Class[] { Connection.class }, (InvocationHandler) (proxy, method, args) -> null);
+
 		private String server;
 		private int port;
 		private SipConfig sipConfig;
@@ -32,7 +37,7 @@ class SipClientMainTest {
 		protected Connection makeConnection(String server, int port) throws Exception {
 			this.server = server;
 			this.port = port;
-			return null;
+			return theConnection;
 		}
 
 		@Override
@@ -85,6 +90,7 @@ class SipClientMainTest {
 			c.assertThat(sipClientMainSpy.call.getCallerName()).isEqualTo("4");
 			c.assertThat(sipClientMainSpy.sipConfig.getUsername()).isEqualTo("5");
 			c.assertThat(sipClientMainSpy.sipConfig.getPassword()).isEqualTo("6");
+			c.assertThat(sipClientMainSpy.connection).isSameAs(sipClientMainSpy.theConnection);
 		});
 	}
 
