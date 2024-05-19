@@ -3,6 +3,7 @@ package com.github.pfichtner.jsipdialer;
 import static java.lang.Integer.parseInt;
 
 import java.io.Closeable;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.apache.commons.cli.DefaultParser;
@@ -13,6 +14,8 @@ import org.apache.commons.cli.ParseException;
 import com.github.pfichtner.jsipdialer.messages.MessageFactory;
 
 public class SipClientMain {
+
+	private static final String JSIPDIALER = "jsipdialer";
 
 	public static final int DEFAULT_SIPPORT = 5060;
 	public static final int DEFAULT_TIMEOUT = 15;
@@ -61,8 +64,15 @@ public class SipClientMain {
 			}
 		} catch (ParseException e) {
 			e.printStackTrace();
-			new HelpFormatter().printHelp("args...", options);
+			new HelpFormatter().printHelp(binaryName(), options);
 		}
+	}
+
+	private static String binaryName() {
+		Optional<String> binaryName = System.getProperty("org.graalvm.nativeimage.imagecode") == null //
+				? Optional.empty() //
+				: ProcessHandle.current().info().command().map(c -> c.substring(c.lastIndexOf('/') + 1));
+		return binaryName.orElse(JSIPDIALER);
 	}
 
 	protected Connection makeConnection(String server, int port) throws Exception {
