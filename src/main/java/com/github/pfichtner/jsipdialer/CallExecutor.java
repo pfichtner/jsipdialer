@@ -107,13 +107,18 @@ public class CallExecutor {
 		var locPort = connection.localPort();
 		var from = sipIdentifier(config.getUsername());
 		var to = sipIdentifier(call.getDestinationNumber());
+
 		return factory.newMessage("INVITE", to) //
 				.add("Call-ID", "%010d@%s", call.callId, locIpAddr) //
-				.add("From", "\"%s\" <%s>;tag=%010d", call.getCallerName(), from, call.tagId)
+				.add("From", prefixCallerName(call, "<%s>".formatted(from)))
 				.add("Via", "%s/UDP %s:%d;rport=%d", factory.sipVersion(), locIpAddr, locPort, locPort)
 				.add("To", "<" + to + ">") //
 				.add("Contact", "\"%s\" <%s:%d;transport=udp>", config.getUsername(), from, locPort) //
 		;
+	}
+
+	private static String prefixCallerName(Call call, String in) {
+		return call.getCallerName() == null ? in : "\"%s\" ".formatted(call.getCallerName()) + in;
 	}
 
 	private MessageToSend ackMessage(Call call) {

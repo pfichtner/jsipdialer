@@ -1,5 +1,5 @@
 stderr:
-org.apache.commons.cli.MissingOptionException: Missing required options: sipServerAddress, destinationNumber, callerName
+org.apache.commons.cli.MissingOptionException: Missing required options: sipServerAddress, destinationNumber
 
 stdout:
 usage: jsipdialer

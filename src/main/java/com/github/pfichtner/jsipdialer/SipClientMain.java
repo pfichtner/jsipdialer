@@ -99,7 +99,7 @@ public class SipClientMain {
 				.addOption(PASSWORD, true,
 						"sip password (should better be passed via env var " + ENVVAR_SIP_PASSWORD + ")") //
 				.addRequiredOption(DESTINATION_NUMBER, null, true, "the number to call") //
-				.addRequiredOption(CALLER_NAME, null, true, "the caller's name that gets displayed") //
+				.addOption(CALLER_NAME, null, true, "the caller's name that gets displayed") //
 				.addOption(TIMEOUT, true, "terminate call at most after x seconds");
 	}
 

@@ -7,4 +7,5 @@ The call should be initialized using a soft phone (SIP). https://github.com/tmak
 
 Calls the numnber ```**9``` ("Sammelrufnummer" on Fritz!Boxes [TM]) for at most 20 seconds. 
 USERNAME and PASSWORD are passed via environment variables for security reasons (you should not pass confidential information via command line arguments)
+```callerName``` and ```timeout``` are optional. 
 
