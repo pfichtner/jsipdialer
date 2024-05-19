@@ -9,7 +9,6 @@ jobs:
   build:
     name: jsipdialer on ${{ matrix.os }}
     runs-on: ${{ matrix.os == 'darwin' && 'macos-latest' || matrix.os == 'linux' && 'ubuntu-latest' || matrix.os == 'windows' && 'windows-latest' }}
-    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [linux]
