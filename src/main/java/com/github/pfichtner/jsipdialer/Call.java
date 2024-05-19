@@ -77,6 +77,10 @@ public class Call {
 		return received == null ? null : received.statuscode();
 	}
 
+	public int getTimeout() {
+		return timeout;
+	}
+
 	private static int random() {
 		return new SecureRandom().nextInt(0x3fffffff + 1);
 	}

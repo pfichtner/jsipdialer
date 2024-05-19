@@ -91,7 +91,14 @@ class SipClientMainTest {
 			c.assertThat(sipClientMainSpy.sipConfig.getUsername()).isEqualTo("5");
 			c.assertThat(sipClientMainSpy.sipConfig.getPassword()).isEqualTo("6");
 			c.assertThat(sipClientMainSpy.connection).isSameAs(sipClientMainSpy.theConnection);
+			c.assertThat(sipClientMainSpy.call.getTimeout()).isEqualTo(SipClientMain.DEFAULT_TIMEOUT);
 		});
+	}
+
+	@Test
+	void timeoutSetAsWell() throws Exception {
+		callMain(addValues(and(required, "sipUsername", "sipPassword", "timeout")));
+		assertThat(sipClientMainSpy.call.getTimeout()).isEqualTo(7);
 	}
 
 	// TODO test env vars

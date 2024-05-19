@@ -14,6 +14,8 @@ import com.github.pfichtner.jsipdialer.messages.MessageFactory;
 
 public class SipClientMain {
 
+	public static final int DEFAULT_TIMEOUT = 15;
+
 	private static final String ENVVAR_SIP_USERNAME = "SIP_USERNAME";
 	private static final String ENVVAR_SIP_PASSWORD = "SIP_PASSWORD";
 
@@ -45,7 +47,7 @@ public class SipClientMain {
 			var call = new Call( //
 					cmdLine.getOptionValue(DESTINATION_NUMBER), //
 					cmdLine.getOptionValue(CALLER_NAME), //
-					parseInt(cmdLine.getOptionValue(TIMEOUT, "15")) //
+					parseInt(cmdLine.getOptionValue(TIMEOUT, String.valueOf(DEFAULT_TIMEOUT))) //
 			);
 			Connection connection = makeConnection(cmdLine.getOptionValue(SIP_SERVER_ADDRESS),
 					parseInt(cmdLine.getOptionValue(SIP_SERVER_PORT, "5060")));
