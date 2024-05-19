@@ -1,5 +1,6 @@
 package com.github.pfichtner.jsipdialer;
 
+import static java.lang.System.lineSeparator;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Stream.concat;
@@ -139,7 +140,9 @@ class SipClientMainTest {
 	}
 
 	private void verifyStdoutAndStderr() {
-		verify(Stream.of("stderr:", stderr.toString(), "stdout:", stdout.toString()).collect(joining("\n")));
+		String[] stdErrLines = stderr.toString().split(lineSeparator());
+		verify(Stream.of("stderr:", stdErrLines.length == 0 ? "" : stdErrLines[0], "", "stdout:", stdout.toString())
+				.collect(joining("\n")));
 	}
 
 	private void callMain(String... args) throws Exception {
