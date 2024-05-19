@@ -91,12 +91,12 @@ public class CallExecutor {
 	private String digest(Call call, String realm, String nonce, String algorithm) {
 		var hash1 = hash(algorithm, format("%s:%s:%s", config.getUsername(), realm, config.getPassword()));
 		var hash2 = hash(algorithm,
-				format("INVITE:sip:%s@%s", call.destinationNumber, connection.remoteServerAddress()));
+				format("INVITE:sip:%s@%s", call.getDestinationNumber(), connection.remoteServerAddress()));
 		var entries = new LinkedHashMap<String, String>();
 		entries.put("username", config.getUsername()); //
 		entries.put("realm", realm); //
 		entries.put("nonce", nonce); //
-		entries.put("uri", sipIdentifier(call.destinationNumber)); //
+		entries.put("uri", sipIdentifier(call.getDestinationNumber())); //
 		entries.put("response", hash(algorithm, format("%s:%s:%s", hash1, nonce, hash2))); //
 		entries.put("algorithm", algorithm);
 		return "Digest "
@@ -106,10 +106,10 @@ public class CallExecutor {
 	private MessageToSend inviteMessage(Call call) {
 		var locPort = connection.localPort();
 		var from = sipIdentifier(config.getUsername());
-		var to = sipIdentifier(call.destinationNumber);
+		var to = sipIdentifier(call.getDestinationNumber());
 		return factory.newMessage("INVITE", to) //
 				.add("Call-ID", "%010d@%s", call.callId, locIpAddr) //
-				.add("From", "\"%s\" <%s>;tag=%010d", call.callerName, from, call.tagId)
+				.add("From", "\"%s\" <%s>;tag=%010d", call.getCallerName(), from, call.tagId)
 				.add("Via", "%s/UDP %s:%d;rport=%d", factory.sipVersion(), locIpAddr, locPort, locPort)
 				.add("To", "<" + to + ">") //
 				.add("Contact", "\"%s\" <%s:%d;transport=udp>", config.getUsername(), from, locPort) //
@@ -125,7 +125,7 @@ public class CallExecutor {
 
 	private MessageToSend byeMessage(Call call) {
 		return copyFromViaToFromAndLastCallFromLastReceived(call.received,
-				factory.newMessage("BYE", sipIdentifier(call.destinationNumber)));
+				factory.newMessage("BYE", sipIdentifier(call.getDestinationNumber())));
 	}
 
 	private static MessageToSend copyFromViaToFromAndLastCallFromLastReceived(MessageReceived received,

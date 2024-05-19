@@ -81,8 +81,8 @@ class SipClientMainTest {
 		assertSoftly(c -> {
 			c.assertThat(sipClientMainSpy.server).isEqualTo("1");
 			c.assertThat(sipClientMainSpy.port).isEqualTo(2);
-			c.assertThat(sipClientMainSpy.call.destinationNumber).isEqualTo("3");
-			c.assertThat(sipClientMainSpy.call.callerName).isEqualTo("4");
+			c.assertThat(sipClientMainSpy.call.getDestinationNumber()).isEqualTo("3");
+			c.assertThat(sipClientMainSpy.call.getCallerName()).isEqualTo("4");
 			c.assertThat(sipClientMainSpy.sipConfig.getUsername()).isEqualTo("5");
 			c.assertThat(sipClientMainSpy.sipConfig.getPassword()).isEqualTo("6");
 		});

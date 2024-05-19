@@ -71,7 +71,7 @@ class CallExecutorTest {
 				uri="sip:%s@%s", \
 				response="d7279a9da44929e24abb213421b33f96", \
 				algorithm="MD5"\
-				""".formatted(config.getUsername(), realm, nonce, call.destinationNumber,
+				""".formatted(config.getUsername(), realm, nonce, call.getDestinationNumber(),
 				connection.remoteServerAddress());
 		await().forever()
 				.until(() -> connection.sent().stream().filter(where(MessageToSend::command, isEqual("INVITE")))

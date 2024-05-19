@@ -43,8 +43,8 @@ public class Call {
 
 	}
 
-	final String destinationNumber;
-	final String callerName;
+	private final String destinationNumber;
+	private final String callerName;
 
 	int tagId = random();
 	int callId = random();
@@ -63,6 +63,14 @@ public class Call {
 		this.destinationNumber = destinationNumber;
 		this.callerName = callerName;
 		this.timeout = timeout;
+	}
+
+	public String getDestinationNumber() {
+		return destinationNumber;
+	}
+
+	public String getCallerName() {
+		return callerName;
 	}
 
 	public Statuscode statuscode() {
@@ -91,7 +99,6 @@ public class Call {
 
 	public void increaseInvitesWithAuth() {
 		inviteWithAuthTries.increase();
-		;
 	}
 
 	public boolean shouldTryInvite() {
