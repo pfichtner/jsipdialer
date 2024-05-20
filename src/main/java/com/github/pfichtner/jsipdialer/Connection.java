@@ -5,7 +5,7 @@ import java.io.IOException;
 import com.github.pfichtner.jsipdialer.messages.MessageReceived;
 import com.github.pfichtner.jsipdialer.messages.MessageToSend;
 
-public interface Connection {
+public interface Connection extends AutoCloseable {
 
 	void send(MessageToSend message) throws IOException;
 

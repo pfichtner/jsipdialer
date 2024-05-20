@@ -61,4 +61,9 @@ public class ConnectionStub implements Connection {
 		return 45678;
 	}
 
+	@Override
+	public void close() throws Exception {
+		// noop
+	}
+
 }

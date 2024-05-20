@@ -2,7 +2,6 @@ package com.github.pfichtner.jsipdialer;
 
 import static java.lang.Integer.parseInt;
 
-import java.io.Closeable;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -53,14 +52,9 @@ public class SipClientMain {
 					cmdLine.getOptionValue(CALLER_NAME), //
 					parseInt(cmdLine.getOptionValue(TIMEOUT, String.valueOf(DEFAULT_TIMEOUT))) //
 			);
-			Connection connection = makeConnection(cmdLine.getOptionValue(SIP_SERVER_ADDRESS),
-					parseInt(cmdLine.getOptionValue(SIP_SERVER_PORT, String.valueOf(DEFAULT_SIPPORT))));
-			try {
+			try (Connection connection = makeConnection(cmdLine.getOptionValue(SIP_SERVER_ADDRESS),
+					parseInt(cmdLine.getOptionValue(SIP_SERVER_PORT, String.valueOf(DEFAULT_SIPPORT))))) {
 				execCall(sipConfig, call, connection);
-			} finally {
-				if (connection instanceof Closeable closeable) {
-					closeable.close();
-				}
 			}
 		} catch (ParseException e) {
 			e.printStackTrace();
