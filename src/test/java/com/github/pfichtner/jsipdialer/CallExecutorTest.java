@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -26,7 +27,7 @@ import com.github.pfichtner.jsipdialer.messages.Statuscode;
 @Timeout(value = CallExecutorTest.TIMEOUT_SECONDS, unit = SECONDS)
 class CallExecutorTest {
 
-	static final int TIMEOUT_SECONDS = 60;
+	static final int TIMEOUT_SECONDS = 20;
 
 	SipConfig config = new SipConfig("aSipUser", "secret");
 
@@ -34,7 +35,7 @@ class CallExecutorTest {
 	void noResponseWillTerminateAfterTimeout() throws Exception {
 		ConnectionStub connection = new ConnectionStub();
 		CallExecutor callExecutor = new CallExecutor(connection, config, new MessageFactory());
-		Call call = new Call("123", "theCallersName", 5);
+		Call call = new Call("123", "the callers name", 5);
 
 		callExecutor.execCall(call);
 
@@ -58,12 +59,11 @@ class CallExecutorTest {
 						emptyList());
 			}
 		};
-		CallExecutor callExecutor = new CallExecutor(connection, config, new MessageFactory());
-		Call call = new Call("123", "theCallersName", 2 * TIMEOUT_SECONDS);
+		var callExecutor = new CallExecutor(connection, config, new MessageFactory());
+		var call = new Call("123", "the callers name", 2 * TIMEOUT_SECONDS);
 
 		callInBackground(callExecutor, call);
-		String key = "Authorization";
-		String expectedValue = """
+		var expectedValue = """
 				Digest \
 				username="%s", \
 				realm="%s", \
@@ -73,9 +73,38 @@ class CallExecutorTest {
 				algorithm="MD5"\
 				""".formatted(config.getUsername(), realm, nonce, call.getDestinationNumber(),
 				connection.remoteServerAddress());
-		await().forever()
-				.until(() -> connection.sent().stream().filter(where(MessageToSend::command, isEqual("INVITE")))
-						.anyMatch(m -> expectedValue.equals(m.lines().get(key))));
+		await().forever().until(() -> whereMatches(connection, "INVITE", "Authorization", expectedValue));
+	}
+
+	@Test
+	void doesSendCallernameIfItsPresent() throws Exception {
+		ConnectionStub connection = new ConnectionStub();
+		var callExecutor = new CallExecutor(connection, config, new MessageFactory());
+		var call = new Call("123", "the callers name", 2 * TIMEOUT_SECONDS);
+
+		callInBackground(callExecutor, call);
+		var expectedValue = "\"%s\" <sip:%s@%s>".formatted(call.getCallerName(), config.getUsername(),
+				connection.remoteServerAddress());
+		await().forever().until(() -> whereMatches(connection, "INVITE", "From", expectedValue));
+	}
+
+	@Test
+	void doesNotSendCallernameIfItsNotPresent() throws Exception {
+		ConnectionStub connection = new ConnectionStub();
+		var callExecutor = new CallExecutor(connection, config, new MessageFactory());
+		var call = new Call("123", null, 2 * TIMEOUT_SECONDS);
+
+		callInBackground(callExecutor, call);
+		var expectedValue = "<sip:%s@%s>".formatted(config.getUsername(), connection.remoteServerAddress());
+		await().forever().until(() -> whereMatches(connection, "INVITE", "From", expectedValue));
+	}
+
+	static boolean whereMatches(ConnectionStub connection, String command, String key, String expectedValue) {
+		return whereCommandIs(connection, command).anyMatch(m -> expectedValue.equals(m.lines().get(key)));
+	}
+
+	private static Stream<MessageToSend> whereCommandIs(ConnectionStub connection, String command) {
+		return connection.sent().stream().filter(where(MessageToSend::command, isEqual(command)));
 	}
 
 	private static void callInBackground(CallExecutor callExecutor, Call call) {
