@@ -8,7 +8,6 @@ import static java.util.function.Predicate.isEqual;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.List;
 import java.util.Map;
@@ -36,7 +35,6 @@ class CallExecutorTest {
 	@Test
 	void noResponseWillTerminateAfterTimeout() throws Exception {
 		Call call = new Call("123", "the callers name", 5);
-
 		callExecutor.execCall(call);
 
 		assertThat(call.statuscode()).isNull();
@@ -48,16 +46,16 @@ class CallExecutorTest {
 
 	@Test
 	void sendsAuthOnUnauthorizedResponse() throws Exception {
-		String realm = "XXX";
-		String nonce = "YYY";
-		connection.messageReceivedSupplier(() -> {
-			var status = UNAUTHORIZED;
-			var data = Map.of("WWW-Authenticate", "realm=\"" + realm + "\", nonce=\"" + nonce + "\"");
-			return new MessageReceived("SIP/2.0 ", new Statuscode(status.value()), status.name(), data, emptyList());
-		});
-		var call = new Call("123", "the callers name", 2 * TIMEOUT_SECONDS);
+		var realm = "XXX";
+		var nonce = "YYY";
+		var data = Map.of("WWW-Authenticate", "realm=\"" + realm + "\", nonce=\"" + nonce + "\"");
+		var status = UNAUTHORIZED;
+		var answer = new MessageReceived("SIP/2.0 ", new Statuscode(status.value()), status.name(), data, emptyList());
+		connection.messageReceivedSupplier(() -> answer);
 
+		var call = new Call("123", "the callers name", 2 * TIMEOUT_SECONDS);
 		callInBackground(call);
+
 		var expectedValue = """
 				Digest \
 				username="%s", \
@@ -74,8 +72,8 @@ class CallExecutorTest {
 	@Test
 	void doesSendCallernameIfItsPresent() throws Exception {
 		var call = new Call("123", "the callers name", 2 * TIMEOUT_SECONDS);
-
 		callInBackground(call);
+
 		var expectedValue = "\"%s\" <sip:%s@%s>".formatted(call.getCallerName(), config.getUsername(),
 				connection.remoteServerAddress());
 		await().forever().until(() -> whereMatches("INVITE", "From", expectedValue));
