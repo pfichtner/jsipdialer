@@ -1,9 +1,11 @@
 package com.github.pfichtner.jsipdialer;
 
 import static java.util.Collections.emptyList;
+import static java.util.Collections.unmodifiableList;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -17,6 +19,7 @@ import com.github.pfichtner.jsipdialer.messages.Statuscode;
 public class ConnectionStub implements Connection {
 
 	private final List<MessageToSend> sent = new CopyOnWriteArrayList<>();
+	private final List<MessageToSend> sentView = unmodifiableList(sent);
 
 	private Supplier<MessageReceived> messageReceivedSupplier = () -> null;
 
@@ -37,7 +40,7 @@ public class ConnectionStub implements Connection {
 	}
 
 	public List<MessageToSend> sent() {
-		return new ArrayList<>(sent);
+		return sentView;
 	}
 
 	static MessageReceived ok() {
