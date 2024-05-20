@@ -9,7 +9,6 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -29,12 +28,12 @@ class CallExecutorTest {
 
 	static final int TIMEOUT_SECONDS = 20;
 
+	ConnectionStub connection = new ConnectionStub();
 	SipConfig config = new SipConfig("aSipUser", "secret");
+	CallExecutor callExecutor = new CallExecutor(connection, config, new MessageFactory());
 
 	@Test
 	void noResponseWillTerminateAfterTimeout() throws Exception {
-		ConnectionStub connection = new ConnectionStub();
-		CallExecutor callExecutor = new CallExecutor(connection, config, new MessageFactory());
 		Call call = new Call("123", "the callers name", 5);
 
 		callExecutor.execCall(call);
@@ -50,19 +49,14 @@ class CallExecutorTest {
 	void sendsAuthOnUnauthorizedResponse() throws Exception {
 		String realm = "XXX";
 		String nonce = "YYY";
-		ConnectionStub connection = new ConnectionStub() {
-			@Override
-			public MessageReceived receive() throws IOException {
-				var status = UNAUTHORIZED;
-				var data = Map.of("WWW-Authenticate", "realm=\"" + realm + "\", nonce=\"" + nonce + "\"");
-				return new MessageReceived("SIP/2.0 ", new Statuscode(status.value()), status.name(), data,
-						emptyList());
-			}
-		};
-		var callExecutor = new CallExecutor(connection, config, new MessageFactory());
+		connection.messageReceivedSupplier(() -> {
+			var status = UNAUTHORIZED;
+			var data = Map.of("WWW-Authenticate", "realm=\"" + realm + "\", nonce=\"" + nonce + "\"");
+			return new MessageReceived("SIP/2.0 ", new Statuscode(status.value()), status.name(), data, emptyList());
+		});
 		var call = new Call("123", "the callers name", 2 * TIMEOUT_SECONDS);
 
-		callInBackground(callExecutor, call);
+		callInBackground(call);
 		var expectedValue = """
 				Digest \
 				username="%s", \
@@ -73,41 +67,41 @@ class CallExecutorTest {
 				algorithm="MD5"\
 				""".formatted(config.getUsername(), realm, nonce, call.getDestinationNumber(),
 				connection.remoteServerAddress());
-		await().forever().until(() -> whereMatches(connection, "INVITE", "Authorization", expectedValue));
+		await().forever().until(() -> whereMatches("INVITE", "Authorization", expectedValue));
 	}
 
 	@Test
 	void doesSendCallernameIfItsPresent() throws Exception {
-		ConnectionStub connection = new ConnectionStub();
-		var callExecutor = new CallExecutor(connection, config, new MessageFactory());
 		var call = new Call("123", "the callers name", 2 * TIMEOUT_SECONDS);
 
-		callInBackground(callExecutor, call);
+		callInBackground(call);
 		var expectedValue = "\"%s\" <sip:%s@%s>".formatted(call.getCallerName(), config.getUsername(),
 				connection.remoteServerAddress());
-		await().forever().until(() -> whereMatches(connection, "INVITE", "From", expectedValue));
+		await().forever().until(() -> whereMatches("INVITE", "From", expectedValue));
 	}
 
 	@Test
 	void doesNotSendCallernameIfItsNotPresent() throws Exception {
-		ConnectionStub connection = new ConnectionStub();
-		var callExecutor = new CallExecutor(connection, config, new MessageFactory());
 		var call = new Call("123", null, 2 * TIMEOUT_SECONDS);
 
-		callInBackground(callExecutor, call);
+		callInBackground(call);
 		var expectedValue = "<sip:%s@%s>".formatted(config.getUsername(), connection.remoteServerAddress());
-		await().forever().until(() -> whereMatches(connection, "INVITE", "From", expectedValue));
+		await().forever().until(() -> whereMatches("INVITE", "From", expectedValue));
 	}
 
-	static boolean whereMatches(ConnectionStub connection, String command, String key, String expectedValue) {
-		return whereCommandIs(connection, command).anyMatch(m -> expectedValue.equals(m.lines().get(key)));
+	private boolean whereMatches(String command, String key, String expectedValue) {
+		return whereCommandIs(command).anyMatch(m -> expectedValue.equals(m.lines().get(key)));
 	}
 
-	private static Stream<MessageToSend> whereCommandIs(ConnectionStub connection, String command) {
+	private Stream<MessageToSend> whereCommandIs(String command) {
 		return connection.sent().stream().filter(where(MessageToSend::command, isEqual(command)));
 	}
 
-	private static void callInBackground(CallExecutor callExecutor, Call call) {
+	private static Predicate<MessageToSend> where(Function<MessageToSend, String> mapper, Predicate<String> predicate) {
+		return m -> predicate.test(mapper.apply(m));
+	}
+
+	private void callInBackground(Call call) {
 		newSingleThreadExecutor().execute(() -> {
 			try {
 				callExecutor.execCall(call);
@@ -119,10 +113,6 @@ class CallExecutorTest {
 
 	private static long count(List<MessageToSend> sent, String command) {
 		return sent.stream().filter(where(MessageToSend::command, isEqual(command))).count();
-	}
-
-	private static Predicate<MessageToSend> where(Function<MessageToSend, String> mapper, Predicate<String> predicate) {
-		return m -> predicate.test(mapper.apply(m));
 	}
 
 }

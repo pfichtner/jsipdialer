@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Supplier;
 
 import com.github.pfichtner.jsipdialer.messages.MessageReceived;
 import com.github.pfichtner.jsipdialer.messages.MessageToSend;
@@ -16,6 +17,8 @@ public class ConnectionStub implements Connection {
 
 	private final List<MessageToSend> sent = new CopyOnWriteArrayList<>();
 
+	private Supplier<MessageReceived> messageReceivedSupplier = () -> null;
+
 	@Override
 	public void send(MessageToSend message) throws IOException {
 		sent.add(message);
@@ -24,7 +27,12 @@ public class ConnectionStub implements Connection {
 
 	@Override
 	public MessageReceived receive() throws IOException {
-		return null;
+		return messageReceivedSupplier.get();
+	}
+
+	public ConnectionStub messageReceivedSupplier(Supplier<MessageReceived> messageReceivedSupplier) {
+		this.messageReceivedSupplier = messageReceivedSupplier;
+		return this;
 	}
 
 	public List<MessageToSend> sent() {
