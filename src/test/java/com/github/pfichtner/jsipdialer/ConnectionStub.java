@@ -3,6 +3,7 @@ package com.github.pfichtner.jsipdialer;
 import static java.util.Collections.emptyList;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -36,7 +37,7 @@ public class ConnectionStub implements Connection {
 	}
 
 	public List<MessageToSend> sent() {
-		return sent;
+		return new ArrayList<>(sent);
 	}
 
 	static MessageReceived ok() {

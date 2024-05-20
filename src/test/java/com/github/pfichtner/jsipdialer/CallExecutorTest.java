@@ -5,6 +5,7 @@ import static java.util.Collections.emptyList;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.function.Predicate.isEqual;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -38,7 +39,7 @@ class CallExecutorTest {
 
 		callExecutor.execCall(call);
 
-		assertNull(call.statuscode());
+		assertThat(call.statuscode()).isNull();
 		var sent = connection.sent();
 		assertEquals(5L, count(sent, "INVITE"));
 		assertEquals(5L, count(sent, "BYE"));
