@@ -7,7 +7,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.function.Predicate.isEqual;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
 import java.util.Map;
@@ -39,9 +38,9 @@ class CallExecutorTest {
 
 		assertThat(call.statuscode()).isNull();
 		var sent = connection.sent();
-		assertEquals(5L, count(sent, "INVITE"));
-		assertEquals(5L, count(sent, "BYE"));
-		assertEquals(10, sent.size());
+		assertThat(filterCommands(sent, "INVITE")).hasSize(5);
+		assertThat(filterCommands(sent, "BYE")).hasSize(5);
+		assertThat(sent).hasSize(10);
 	}
 
 	@Test
@@ -96,6 +95,10 @@ class CallExecutorTest {
 		return connection.sent().stream().filter(where(MessageToSend::command, isEqual(command)));
 	}
 
+	private static Stream<MessageToSend> filterCommands(List<MessageToSend> sent, String command) {
+		return sent.stream().filter(where(MessageToSend::command, isEqual(command)));
+	}
+
 	private static Predicate<MessageToSend> where(Function<MessageToSend, String> mapper, Predicate<String> predicate) {
 		return m -> predicate.test(mapper.apply(m));
 	}
@@ -108,10 +111,6 @@ class CallExecutorTest {
 				throw new RuntimeException(e);
 			}
 		});
-	}
-
-	private static long count(List<MessageToSend> sent, String command) {
-		return sent.stream().filter(where(MessageToSend::command, isEqual(command))).count();
 	}
 
 }

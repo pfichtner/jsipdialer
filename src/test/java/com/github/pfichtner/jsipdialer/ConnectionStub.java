@@ -1,20 +1,14 @@
 package com.github.pfichtner.jsipdialer;
 
-import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableList;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 
 import com.github.pfichtner.jsipdialer.messages.MessageReceived;
 import com.github.pfichtner.jsipdialer.messages.MessageToSend;
-import com.github.pfichtner.jsipdialer.messages.SipStatus;
-import com.github.pfichtner.jsipdialer.messages.Statuscode;
 
 public class ConnectionStub implements Connection {
 
@@ -41,17 +35,6 @@ public class ConnectionStub implements Connection {
 
 	public List<MessageToSend> sent() {
 		return sentView;
-	}
-
-	static MessageReceived ok() {
-		var status = SipStatus.OK;
-		var data = Map.of( //
-				"To", "ToXXX", //
-				"From", "FromXXX", //
-				"Via", "ViaXXX", //
-				"Call-ID", "Call-IDXXX" //
-		);
-		return new MessageReceived("SIP/2.0 ", new Statuscode(status.value()), status.name(), data, emptyList());
 	}
 
 	@Override
