@@ -1,6 +1,5 @@
 package com.github.pfichtner.jsipdialer;
 
-import static java.lang.System.lineSeparator;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Stream.concat;
@@ -8,8 +7,6 @@ import static org.approvaltests.Approvals.verify;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
@@ -19,9 +16,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junitpioneer.jupiter.SetEnvironmentVariable;
+import org.junitpioneer.jupiter.StdErr;
+import org.junitpioneer.jupiter.StdIo;
+import org.junitpioneer.jupiter.StdOut;
+import org.junitpioneer.jupiter.WritesStdIo;
 
 class SipClientMainTest {
 
@@ -71,14 +71,6 @@ class SipClientMainTest {
 	));
 
 	SipClientMainSpy sipClientMainSpy = new SipClientMainSpy();
-	ByteArrayOutputStream stdout = new ByteArrayOutputStream();
-	ByteArrayOutputStream stderr = new ByteArrayOutputStream();
-
-	@BeforeEach
-	void setup() {
-		System.setOut(new PrintStream(stdout));
-		System.setErr(new PrintStream(stderr));
-	}
 
 	private static Map<String, Object> checkValuesAreUnique(Map<String, Object> map) {
 		var values = map.values();
@@ -89,23 +81,29 @@ class SipClientMainTest {
 	}
 
 	@Test
-	void noArgsAtAll() throws Exception {
+	@StdIo
+	@WritesStdIo
+	void noArgsAtAll(StdOut stdOut, StdErr stderr) throws Exception {
 		callMain();
-		assertThat(stderr.toString())
+		assertThat(join(stderr.capturedLines()))
 				.contains("Missing required options: " + stream(requiredArgs()).collect(joining(", ")));
-		verifyStdoutAndStderr();
+		verifyStdoutAndStderr(stdOut, stderr);
 	}
 
 	@Test
-	void requiredArgumentsSetButUserAndPasswordMissing() throws Exception {
+	@StdIo
+	@WritesStdIo
+	void requiredArgumentsSetButUserAndPasswordMissing(StdOut stdOut, StdErr stderr) throws Exception {
 		callMain(setValuesOn(requiredArgs()));
-		verifyStdoutAndStderr();
+		verifyStdoutAndStderr(stdOut, stderr);
 	}
 
 	@Test
-	void requiredArgumentsAndUserSetButPasswordMissing() throws Exception {
+	@StdIo
+	@WritesStdIo
+	void requiredArgumentsAndUserSetButPasswordMissing(StdOut stdOut, StdErr stderr) throws Exception {
 		callMain(setValuesOn(and(requiredArgs(), ARGNAME_SIP_USERNAME)));
-		verifyStdoutAndStderr();
+		verifyStdoutAndStderr(stdOut, stderr);
 	}
 
 	@Test
@@ -163,10 +161,14 @@ class SipClientMainTest {
 		return params.get(parameter);
 	}
 
-	private void verifyStdoutAndStderr() {
-		String[] stdErrLines = stderr.toString().split(lineSeparator());
-		verify(Stream.of("stderr:", stdErrLines.length == 0 ? "" : stdErrLines[0], "", "stdout:", stdout.toString())
-				.collect(joining("\n")));
+	private void verifyStdoutAndStderr(StdOut stdout, StdErr stderr) {
+		var stdErrLines = stderr.capturedLines();
+		verify(Stream.of("stderr:", stdErrLines.length == 0 ? "" : stdErrLines[0], "", "stdout:",
+				join(stdout.capturedLines())).collect(joining("\n")));
+	}
+
+	private static String join(String[] capturedLines) {
+		return stream(capturedLines).collect(joining("\n"));
 	}
 
 	private void callMain(String... args) throws Exception {
