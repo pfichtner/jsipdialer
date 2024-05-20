@@ -14,7 +14,7 @@ USERNAME and PASSWORD are passed via environment variables for security reasons 
 ```callerName``` and ```timeout``` are optional. 
 
 You can download native-images ("executables") from the [releases](https://github.com/pfichtner/jsipdialer/releases). 
-At the moment I do only build native-images for linux-x86, linux-arm64 (e.h. Raspberry PI) runners are currently not supported by github itself and would need a self-hosted-runner. 
+At the moment I do only build native-images for linux-x86, linux-arm64 (for building executables for e.g. the Raspberry Pi) runners are currently not supported by github itself and would need a self-hosted-runner. 
 Of course you can use jsipdialer without a native-image but then you need a JRE 17 or higher installed. Instead of calling the binary you would call then ```java -jar jsipdialer.jar```
 
 
