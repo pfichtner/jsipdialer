@@ -46,10 +46,10 @@ jobs:
       - name: Compress and move files
         run: |
           mkdir -p publish-artifacts
-          if [ -z "${{ github.event.release.tag_name }}" ]; then
-            tarname="${{ matrix.os }}"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            tarname="${GITHUB_REF#refs/tags/}_${{ matrix.os }}"
           else
-            tarname="${{ github.event.release.tag_name }}_${{ matrix.os }}"
+            tarname="${{ matrix.os }}"
           fi
           (cd target && find . -maxdepth 1 -type f -print0 | tar --null -czf "../publish-artifacts/jsipdialer_${tarname}.tar.gz" --files-from=-)
       - name: Upload Artifacts
