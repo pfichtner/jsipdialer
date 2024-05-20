@@ -39,7 +39,7 @@ class SipClientMainTest {
 				new Class[] { Connection.class }, (InvocationHandler) (proxy, method, args) -> null);
 
 		private String server;
-		private int port;
+		private Integer port;
 		private SipConfig sipConfig;
 		private Call call;
 		private Connection connection;
