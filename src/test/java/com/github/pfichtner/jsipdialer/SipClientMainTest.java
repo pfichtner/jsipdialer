@@ -61,7 +61,7 @@ class SipClientMainTest {
 	}
 
 	Map<String, Object> params = checkValuesAreUnique(Map.of( //
-			ARGNAME_SIP_SERVER_ADDRESS, "foobar.local", //
+			ARGNAME_SIP_SERVER_ADDRESS, "some.server.address.local", //
 			ARGNAME_SIP_SERVER_PORT, SipClientMain.DEFAULT_SIPPORT + 1, //
 			ARGNAME_SIP_USERNAME, "someUser", //
 			ARGNAME_SIP_PASSWORD, "somePassword", //
@@ -72,7 +72,7 @@ class SipClientMainTest {
 
 	SipClientMainSpy sipClientMainSpy = new SipClientMainSpy();
 
-	private static Map<String, Object> checkValuesAreUnique(Map<String, Object> map) {
+	private static <K, V> Map<K, V> checkValuesAreUnique(Map<K, V> map) {
 		var values = map.values();
 		if (Set.copyOf(values).size() < values.size()) {
 			throw new IllegalStateException("Duplicate values in " + map + "(" + values + ")");
