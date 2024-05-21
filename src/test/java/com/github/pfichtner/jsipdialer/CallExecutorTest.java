@@ -1,6 +1,7 @@
 package com.github.pfichtner.jsipdialer;
 
 import static com.github.pfichtner.jsipdialer.messages.SipStatus.UNAUTHORIZED;
+import static com.github.pfichtner.jsipdialer.messages.Statuscode.statuscodeOf;
 import static java.util.Collections.emptyList;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -20,7 +21,6 @@ import org.junit.jupiter.api.Timeout;
 import com.github.pfichtner.jsipdialer.messages.MessageFactory;
 import com.github.pfichtner.jsipdialer.messages.MessageReceived;
 import com.github.pfichtner.jsipdialer.messages.MessageToSend;
-import com.github.pfichtner.jsipdialer.messages.Statuscode;
 
 @Timeout(value = CallExecutorTest.TIMEOUT_SECONDS, unit = SECONDS)
 class CallExecutorTest {
@@ -47,9 +47,7 @@ class CallExecutorTest {
 	void sendsAuthOnUnauthorizedResponse() throws Exception {
 		var realm = "XXX";
 		var nonce = "YYY";
-		var data = Map.of("WWW-Authenticate", "realm=\"" + realm + "\", nonce=\"" + nonce + "\"");
-		var status = UNAUTHORIZED;
-		var answer = new MessageReceived("SIP/2.0 ", new Statuscode(status.value()), status.name(), data, emptyList());
+		var answer = unauthorizedAnswer("realm=\"" + realm + "\", nonce=\"" + nonce + "\"");
 		connection.messageReceivedSupplier(() -> answer);
 
 		var call = new Call("123", "the callers name", 2 * TIMEOUT_SECONDS);
@@ -85,6 +83,12 @@ class CallExecutorTest {
 		callInBackground(call);
 		var expectedValue = "<sip:%s@%s>".formatted(config.getUsername(), connection.remoteServerAddress());
 		await().forever().until(() -> whereMatches("INVITE", "From", expectedValue));
+	}
+
+	private static MessageReceived unauthorizedAnswer(String authString) {
+		var status = UNAUTHORIZED;
+		return new MessageReceived("SIP/2.0 ", statuscodeOf(status), status.name(),
+				Map.of("WWW-Authenticate", authString), emptyList());
 	}
 
 	private boolean whereMatches(String command, String key, String expectedValue) {

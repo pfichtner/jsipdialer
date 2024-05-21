@@ -4,6 +4,10 @@ public class Statuscode {
 
 	private final int value;
 
+	public static Statuscode statuscodeOf(SipStatus status) {
+		return new Statuscode(status.value());
+	}
+
 	public Statuscode(int value) {
 		this.value = value;
 	}
