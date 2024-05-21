@@ -12,6 +12,7 @@ import static java.util.Collections.list;
 import static java.util.logging.Level.SEVERE;
 import static java.util.stream.Collectors.joining;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.security.MessageDigest;
@@ -64,20 +65,25 @@ public class CallExecutor {
 			call.setReceived(next);
 
 			if (call.statuscode().is(OK)) {
-				connection.send(ackMessage(call));
+				sendAck(call);
 			} else if (call.statuscode().is(TRYING)) {
-				connection.send(ackMessage(call));
-			} else if (call.statuscode().isOneOf(BUSY_HERE, DECLINE, REQUEST_CANCELLED, CALL_DOES_NOT_EXIST)) {
-				if (call.statuscode().is(CALL_DOES_NOT_EXIST)) {
-					logger.log(SEVERE, "Error on call handling %s", call.received);
-				}
-				connection.send(ackMessage(call));
+				sendAck(call);
+			} else if (call.statuscode().isOneOf(BUSY_HERE, DECLINE, REQUEST_CANCELLED)) {
+				sendAck(call);
+				call.inProgress(false);
+			} else if (call.statuscode().is(CALL_DOES_NOT_EXIST)) {
+				logger.log(SEVERE, "Error on call handling %s", call.received);
+				sendAck(call);
 				call.inProgress(false);
 			} else if (call.statuscode().isUnauthorized() && call.shouldTryInviteWithAuth()) {
 				call.increaseInvitesWithAuth();
 				connection.send(addAuthorization(call, inviteMessage(call)));
 			}
 		}
+	}
+
+	private void sendAck(Call call) throws IOException {
+		connection.send(ackMessage(call));
 	}
 
 	private MessageToSend addAuthorization(Call call, MessageToSend inviteMessage) {
