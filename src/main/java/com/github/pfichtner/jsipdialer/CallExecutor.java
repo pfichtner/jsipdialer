@@ -127,7 +127,13 @@ public class CallExecutor {
 
 	private MessageToSend byeMessage(Call call) {
 		return copyFromViaToFromAndLastCallFromLastReceived(call.received(),
-				factory.newMessage("BYE", sipIdentifier(call.destinationNumber())));
+				factory.newMessage("BYE", toFromCall(call)));
+	}
+
+	private String toFromCall(Call call) {
+		return Optional.ofNullable(call.received()) //
+				.map(r -> r.get("To")) //
+				.orElseGet(() -> sipIdentifier(call.destinationNumber()));
 	}
 
 	private static MessageToSend copyFromViaToFromAndLastCallFromLastReceived(MessageReceived received,

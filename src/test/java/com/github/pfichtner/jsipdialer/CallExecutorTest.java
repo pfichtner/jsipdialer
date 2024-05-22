@@ -1,5 +1,6 @@
 package com.github.pfichtner.jsipdialer;
 
+import static com.github.pfichtner.jsipdialer.messages.SipStatus.OK;
 import static com.github.pfichtner.jsipdialer.messages.SipStatus.UNAUTHORIZED;
 import static com.github.pfichtner.jsipdialer.messages.Statuscode.statuscodeOf;
 import static java.util.Collections.emptyList;
@@ -83,6 +84,21 @@ class CallExecutorTest {
 		callInBackground(call);
 		var expectedValue = "<sip:%s@%s>".formatted(config.getUsername(), connection.remoteServerAddress());
 		await().forever().until(() -> whereMatches("INVITE", "From", expectedValue));
+	}
+
+	@Test
+	void useToFromServer() throws Exception {
+		var toAnswerFromServer = "<sip:noMatterWhatsTheTheClientSendsThisIsTheAnswerFromTheServer;tag=123;branch=456>";
+		var status = OK;
+		var answer = new MessageReceived("SIP/2.0 ", statuscodeOf(status), status.name(),
+				Map.of("From", "<sip:someFrom>", "Via", "someVia", "Call-ID", "someCallId", "To", toAnswerFromServer),
+				emptyList());
+		connection.messageReceivedSupplier(() -> answer);
+
+		var call = new Call("123", "the callers name", 1);
+		callInBackground(call);
+
+		await().forever().until(() -> whereMatches("BYE", "To", toAnswerFromServer));
 	}
 
 	private static MessageReceived unauthorizedAnswer(String authString) {
