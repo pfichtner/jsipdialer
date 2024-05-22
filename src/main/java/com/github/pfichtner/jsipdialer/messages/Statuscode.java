@@ -53,4 +53,12 @@ public class Statuscode {
 		return false;
 	}
 
+	public boolean is2xx() {
+		return hundreds() == 2;
+	}
+
+	private int hundreds() {
+		return this.value / 100;
+	}
+
 }

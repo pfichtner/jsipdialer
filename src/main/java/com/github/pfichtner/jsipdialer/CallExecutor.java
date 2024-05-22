@@ -3,16 +3,13 @@ package com.github.pfichtner.jsipdialer;
 import static com.github.pfichtner.jsipdialer.messages.SipStatus.BUSY_HERE;
 import static com.github.pfichtner.jsipdialer.messages.SipStatus.CALL_DOES_NOT_EXIST;
 import static com.github.pfichtner.jsipdialer.messages.SipStatus.DECLINE;
-import static com.github.pfichtner.jsipdialer.messages.SipStatus.OK;
 import static com.github.pfichtner.jsipdialer.messages.SipStatus.REQUEST_CANCELLED;
-import static com.github.pfichtner.jsipdialer.messages.SipStatus.TRYING;
 import static java.lang.String.format;
 import static java.net.NetworkInterface.getNetworkInterfaces;
 import static java.util.Collections.list;
 import static java.util.logging.Level.SEVERE;
 import static java.util.stream.Collectors.joining;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.security.MessageDigest;
@@ -64,26 +61,20 @@ public class CallExecutor {
 
 			call.setReceived(next);
 
-			if (call.statuscode().is(OK)) {
-				sendAck(call);
-			} else if (call.statuscode().is(TRYING)) {
-				sendAck(call);
-			} else if (call.statuscode().isOneOf(BUSY_HERE, DECLINE, REQUEST_CANCELLED)) {
-				sendAck(call);
+			if (call.statuscode().is2xx()) {
+				connection.send(ackMessage(call));
+			}
+
+			if (call.statuscode().isOneOf(BUSY_HERE, DECLINE, REQUEST_CANCELLED)) {
 				call.inProgress(false);
 			} else if (call.statuscode().is(CALL_DOES_NOT_EXIST)) {
-				logger.log(SEVERE, "Error on call handling %s", call.received);
-				sendAck(call);
+				logger.log(SEVERE, "Error on call handling {}", call.received);
 				call.inProgress(false);
 			} else if (call.statuscode().isUnauthorized() && call.shouldTryInviteWithAuth()) {
 				call.increaseInvitesWithAuth();
 				connection.send(addAuthorization(call, inviteMessage(call)));
 			}
 		}
-	}
-
-	private void sendAck(Call call) throws IOException {
-		connection.send(ackMessage(call));
 	}
 
 	private MessageToSend addAuthorization(Call call, MessageToSend inviteMessage) {

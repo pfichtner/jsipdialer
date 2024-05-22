@@ -51,7 +51,7 @@ public class UdpConnection implements Connection, AutoCloseable {
 			DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
 			socket.receive(receivePacket);
 			response = new String(receivePacket.getData(), 0, receivePacket.getLength());
-			logger.log(INFO, () -> "Response from SIP Server:" + response);
+			logger.log(INFO, () -> "Response from SIP Server: " + response);
 		} catch (SocketTimeoutException e) {
 			return null;
 		}
