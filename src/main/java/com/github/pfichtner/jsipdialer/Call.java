@@ -62,27 +62,40 @@ public class Call {
 		this.timeout = timeout;
 	}
 
-	public String getDestinationNumber() {
+	public int callId() {
+		return callId;
+	}
+
+	public String destinationNumber() {
 		return destinationNumber;
 	}
 
-	public String getCallerName() {
+	public String callerName() {
 		return callerName;
+	}
+
+	public int timeout() {
+		return timeout;
+	}
+
+	public void received(MessageReceived received) {
+		this.received = received;
+
+	}
+
+	public MessageReceived received() {
+		return received;
 	}
 
 	public Statuscode statuscode() {
 		return received == null ? null : received.statuscode();
 	}
 
-	public int getTimeout() {
-		return timeout;
-	}
-
 	private static int random() {
 		return new SecureRandom().nextInt(0x3fffffff + 1);
 	}
 
-	public boolean isInProgress() {
+	public boolean inProgress() {
 		return this.isInProgress;
 	}
 
@@ -124,19 +137,6 @@ public class Call {
 
 	public boolean shouldGiveUp() {
 		return byeTries.limitIsReached();
-	}
-
-	public void setReceived(MessageReceived received) {
-		this.received = received;
-
-	}
-
-	public int callId() {
-		return callId;
-	}
-
-	public MessageReceived received() {
-		return received;
 	}
 
 }

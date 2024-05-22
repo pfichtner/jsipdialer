@@ -111,14 +111,14 @@ class SipClientMainTest {
 		callMain(setValuesOn(and(requiredArgs(), ARGNAME_SIP_USERNAME, ARGNAME_SIP_PASSWORD)));
 		assertSoftly(s -> {
 			s.assertThat(sipClientMainSpy.server).isEqualTo(value(ARGNAME_SIP_SERVER_ADDRESS));
-			s.assertThat(sipClientMainSpy.call.getDestinationNumber()).isEqualTo(value(ARGNAME_DESTINATION_NUMBER));
+			s.assertThat(sipClientMainSpy.call.destinationNumber()).isEqualTo(value(ARGNAME_DESTINATION_NUMBER));
 			s.assertThat(sipClientMainSpy.sipConfig.getUsername()).isEqualTo(value(ARGNAME_SIP_USERNAME));
 			s.assertThat(sipClientMainSpy.sipConfig.getPassword()).isEqualTo(value(ARGNAME_SIP_PASSWORD));
 			s.assertThat(sipClientMainSpy.connection).isSameAs(sipClientMainSpy.theConnection);
 
 			s.assertThat(sipClientMainSpy.port).isEqualTo(SipClientMain.DEFAULT_SIPPORT);
-			s.assertThat(sipClientMainSpy.call.getCallerName()).isNull();
-			s.assertThat(sipClientMainSpy.call.getTimeout()).isEqualTo(SipClientMain.DEFAULT_TIMEOUT);
+			s.assertThat(sipClientMainSpy.call.callerName()).isNull();
+			s.assertThat(sipClientMainSpy.call.timeout()).isEqualTo(SipClientMain.DEFAULT_TIMEOUT);
 		});
 	}
 
@@ -139,8 +139,8 @@ class SipClientMainTest {
 				ARGNAME_CALLER_NAME, ARGNAME_TIMEOUT)));
 		assertSoftly(s -> {
 			s.assertThat(sipClientMainSpy.port).isEqualTo(value(ARGNAME_SIP_SERVER_PORT));
-			s.assertThat(sipClientMainSpy.call.getCallerName()).isEqualTo(value(ARGNAME_CALLER_NAME));
-			s.assertThat(sipClientMainSpy.call.getTimeout()).isEqualTo(value(ARGNAME_TIMEOUT));
+			s.assertThat(sipClientMainSpy.call.callerName()).isEqualTo(value(ARGNAME_CALLER_NAME));
+			s.assertThat(sipClientMainSpy.call.timeout()).isEqualTo(value(ARGNAME_TIMEOUT));
 		});
 	}
 

@@ -61,7 +61,7 @@ class CallExecutorTest {
 				uri="sip:%s@%s", \
 				response="d7279a9da44929e24abb213421b33f96", \
 				algorithm="MD5"\
-				""".formatted(config.getUsername(), realm, nonce, call.getDestinationNumber(),
+				""".formatted(config.getUsername(), realm, nonce, call.destinationNumber(),
 				connection.remoteServerAddress());
 		await().forever().until(() -> whereMatches("INVITE", "Authorization", expectedValue));
 	}
@@ -71,7 +71,7 @@ class CallExecutorTest {
 		var call = new Call("123", "the callers name", 2 * TIMEOUT_SECONDS);
 		callInBackground(call);
 
-		var expectedValue = "\"%s\" <sip:%s@%s>".formatted(call.getCallerName(), config.getUsername(),
+		var expectedValue = "\"%s\" <sip:%s@%s>".formatted(call.callerName(), config.getUsername(),
 				connection.remoteServerAddress());
 		await().forever().until(() -> whereMatches("INVITE", "From", expectedValue));
 	}
