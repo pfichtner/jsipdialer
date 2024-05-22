@@ -19,9 +19,9 @@ public class MessageReceived {
 
 		private final String originalResponse;
 
-		public ParseMessageReceived(String originalResponse, String proto, Statuscode statuscode, String status,
+		public ParseMessageReceived(String originalResponse, String proto, Statuscode statuscode, String command,
 				Map<String, String> data, List<String> additional) {
-			super(proto, statuscode, status, data, additional);
+			super(proto, statuscode, command, data, additional);
 			this.originalResponse = originalResponse;
 		}
 
@@ -34,15 +34,15 @@ public class MessageReceived {
 
 	private final String proto;
 	private final Statuscode statuscode;
-	private final String status;
+	private final String command;
 	private final Map<String, String> data;
 	private final List<String> additional;
 
-	public MessageReceived(String proto, Statuscode statuscode, String status, Map<String, String> data,
+	public MessageReceived(String proto, Statuscode statuscode, String command, Map<String, String> data,
 			List<String> additional) {
 		this.proto = proto;
 		this.statuscode = statuscode;
-		this.status = status;
+		this.command = command;
 		this.data = data;
 		this.additional = additional;
 	}
@@ -60,9 +60,13 @@ public class MessageReceived {
 		return new ParseMessageReceived(response, split[0], new Statuscode(parseInt(split[1])), split[2], data,
 				additional);
 	}
+	
+	public String proto() {
+		return proto;
+	}
 
-	public String getStatus() {
-		return status;
+	public String command() {
+		return command;
 	}
 
 	public Statuscode statuscode() {
@@ -77,7 +81,7 @@ public class MessageReceived {
 		return value;
 	}
 
-	public List<String> getAdditional() {
+	public List<String> additional() {
 		return additional;
 	}
 

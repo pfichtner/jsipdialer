@@ -43,6 +43,7 @@ public class CallExecutor {
 
 	public void execCall(Call call) throws Exception {
 		call.inProgress(true);
+		MessageReceived okMessage = null;
 		while (call.inProgress() && !call.shouldGiveUp()) {
 			if (call.shouldTryInvite()) {
 				call.increaseInvites();
@@ -51,7 +52,11 @@ public class CallExecutor {
 
 			if (call.shouldTryBye()) {
 				call.increaseBye();
-				connection.send(byeMessage(call));
+				if (okMessage != null) {
+					connection.send(byeMessage(call, okMessage));
+				} else {
+					connection.send(cancelMessage(call, okMessage));
+				}
 			}
 
 			MessageReceived next = connection.receive();
@@ -62,13 +67,14 @@ public class CallExecutor {
 			call.received(next);
 
 			if (call.statuscode().is2xx()) {
+				okMessage = call.received();
 				connection.send(ackMessage(call));
 			}
 
 			if (call.statuscode().isOneOf(BUSY_HERE, DECLINE, REQUEST_CANCELLED)) {
 				call.inProgress(false);
 			} else if (call.statuscode().is(CALL_DOES_NOT_EXIST)) {
-				logger.log(SEVERE, "Error on call handling {}", call.received());
+				logger.log(SEVERE, "Error on call handling of " + call.received());
 				call.inProgress(false);
 			} else if (call.statuscode().isUnauthorized() && call.shouldTryInviteWithAuth()) {
 				call.increaseInvitesWithAuth();
@@ -125,15 +131,14 @@ public class CallExecutor {
 		return copyFromViaToFromAndLastCallFromLastReceived(call.received(), factory.newMessage("ACK", ca));
 	}
 
-	private MessageToSend byeMessage(Call call) {
-		return copyFromViaToFromAndLastCallFromLastReceived(call.received(),
-				factory.newMessage("BYE", toFromCall(call)));
+	private MessageToSend byeMessage(Call call, MessageReceived okMessage) {
+		return copyFromViaToFromAndLastCallFromLastReceived(okMessage == null ? call.received() : okMessage,
+				factory.newMessage("BYE", sipIdentifier(call.destinationNumber())));
 	}
 
-	private String toFromCall(Call call) {
-		return Optional.ofNullable(call.received()) //
-				.map(r -> r.get("To")) //
-				.orElseGet(() -> sipIdentifier(call.destinationNumber()));
+	private MessageToSend cancelMessage(Call call, MessageReceived okMessage) {
+		return copyFromViaToFromAndLastCallFromLastReceived(okMessage == null ? call.received() : okMessage,
+				factory.newMessage("CANCEL", sipIdentifier(call.destinationNumber())));
 	}
 
 	private static MessageToSend copyFromViaToFromAndLastCallFromLastReceived(MessageReceived received,

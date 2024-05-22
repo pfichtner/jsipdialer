@@ -38,10 +38,26 @@ class CallExecutorTest {
 		callExecutor.execCall(call);
 
 		assertThat(call.statuscode()).isNull();
-		var sent = connection.sent();
-		assertThat(filterCommands(sent, "INVITE")).hasSize(5);
-		assertThat(filterCommands(sent, "BYE")).hasSize(5);
-		assertThat(sent).hasSize(10);
+		assertThat(filterCommands(connection.sent(), "INVITE")).hasSize(5);
+		assertThat(filterCommands(connection.sent(), "CANCEL")).hasSize(5);
+		assertThat(connection.sent()).hasSize(5 + 5);
+	}
+
+	@Test
+	void withOkResponseWillTerminateAfterTimeout() throws Exception {
+		Call call = new Call("123", "the callers name", 5);
+
+		var toAnswerFromServer = "<sip:abcde@xyz";
+		var answers = List.of(okAnswer(toAnswerFromServer)).iterator();
+		connection.messageReceivedSupplier(() -> answers.hasNext() ? answers.next() : null);
+
+		callExecutor.execCall(call);
+
+		assertThat(call.statuscode()).isEqualTo(statuscodeOf(OK));
+		int countOfAckMessagesSent = 1;
+		assertThat(filterCommands(connection.sent(), "INVITE")).hasSize(1);
+		assertThat(filterCommands(connection.sent(), "BYE")).hasSize(5);
+		assertThat(connection.sent()).hasSize(1 + 5 + countOfAckMessagesSent);
 	}
 
 	@Test
@@ -89,16 +105,19 @@ class CallExecutorTest {
 	@Test
 	void useToFromServer() throws Exception {
 		var toAnswerFromServer = "<sip:noMatterWhatsTheTheClientSendsThisIsTheAnswerFromTheServer;tag=123;branch=456>";
-		var status = OK;
-		var answer = new MessageReceived("SIP/2.0 ", statuscodeOf(status), status.name(),
-				Map.of("From", "<sip:someFrom>", "Via", "someVia", "Call-ID", "someCallId", "To", toAnswerFromServer),
-				emptyList());
+		var answer = okAnswer(toAnswerFromServer);
 		connection.messageReceivedSupplier(() -> answer);
 
 		var call = new Call("123", "the callers name", 1);
 		callInBackground(call);
 
 		await().forever().until(() -> whereMatches("BYE", "To", toAnswerFromServer));
+	}
+
+	private MessageReceived okAnswer(String to) {
+		var status = OK;
+		return new MessageReceived("SIP/2.0 ", statuscodeOf(status), status.name(),
+				Map.of("From", "<sip:someFrom>", "Via", "someVia", "Call-ID", "someCallId", "To", to), emptyList());
 	}
 
 	private static MessageReceived unauthorizedAnswer(String authString) {
