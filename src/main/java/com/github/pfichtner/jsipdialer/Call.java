@@ -43,15 +43,12 @@ public class Call {
 
 	}
 
+	private final int callId = random();
 	private final String destinationNumber;
 	private final String callerName;
-
-	int tagId = random();
-	int callId = random();
-
-	MessageReceived received;
-
 	private final int timeout;
+
+	private MessageReceived received;
 	private long startTime;
 	private boolean isInProgress;
 
@@ -132,6 +129,14 @@ public class Call {
 	public void setReceived(MessageReceived received) {
 		this.received = received;
 
+	}
+
+	public int callId() {
+		return callId;
+	}
+
+	public MessageReceived received() {
+		return received;
 	}
 
 }

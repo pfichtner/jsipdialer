@@ -68,7 +68,7 @@ public class CallExecutor {
 			if (call.statuscode().isOneOf(BUSY_HERE, DECLINE, REQUEST_CANCELLED)) {
 				call.inProgress(false);
 			} else if (call.statuscode().is(CALL_DOES_NOT_EXIST)) {
-				logger.log(SEVERE, "Error on call handling {}", call.received);
+				logger.log(SEVERE, "Error on call handling {}", call.received());
 				call.inProgress(false);
 			} else if (call.statuscode().isUnauthorized() && call.shouldTryInviteWithAuth()) {
 				call.increaseInvitesWithAuth();
@@ -78,7 +78,7 @@ public class CallExecutor {
 	}
 
 	private MessageToSend addAuthorization(Call call, MessageToSend inviteMessage) {
-		var wwwAuthenticate = call.received.get("WWW-Authenticate");
+		var wwwAuthenticate = call.received().get("WWW-Authenticate");
 		var realm = extractValue(wwwAuthenticate, "realm");
 		var nonce = extractValue(wwwAuthenticate, "nonce");
 		var algorithm = tryExtractValue(wwwAuthenticate, "algorithm").orElse("MD5");
@@ -106,7 +106,7 @@ public class CallExecutor {
 		var to = sipIdentifier(call.getDestinationNumber());
 
 		return factory.newMessage("INVITE", to) //
-				.add("Call-ID", "%010d@%s", call.callId, locIpAddr) //
+				.add("Call-ID", "%010d@%s", call.callId(), locIpAddr) //
 				.add("From", prefixCallerNameIfExistent(call, "<%s>".formatted(from)))
 				.add("Via", "%s/UDP %s:%d;rport=%d", factory.sipVersion(), locIpAddr, locPort, locPort)
 				.add("To", "<" + to + ">") //
@@ -120,13 +120,13 @@ public class CallExecutor {
 
 	private MessageToSend ackMessage(Call call) {
 		Pattern pattern = Pattern.compile("<(.*?)>");
-		Matcher matcher = pattern.matcher(call.received.get("To"));
+		Matcher matcher = pattern.matcher(call.received().get("To"));
 		String ca = matcher.find() ? matcher.group(1) : null;
-		return copyFromViaToFromAndLastCallFromLastReceived(call.received, factory.newMessage("ACK", ca));
+		return copyFromViaToFromAndLastCallFromLastReceived(call.received(), factory.newMessage("ACK", ca));
 	}
 
 	private MessageToSend byeMessage(Call call) {
-		return copyFromViaToFromAndLastCallFromLastReceived(call.received,
+		return copyFromViaToFromAndLastCallFromLastReceived(call.received(),
 				factory.newMessage("BYE", sipIdentifier(call.getDestinationNumber())));
 	}
 
