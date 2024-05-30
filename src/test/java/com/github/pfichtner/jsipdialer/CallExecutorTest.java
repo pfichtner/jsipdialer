@@ -1,7 +1,6 @@
 package com.github.pfichtner.jsipdialer;
 
 import static com.github.pfichtner.jsipdialer.messages.SipStatus.*;
-import static com.github.pfichtner.jsipdialer.messages.SipStatus.UNAUTHORIZED;
 import static com.github.pfichtner.jsipdialer.messages.Statuscode.statuscodeOf;
 import static java.util.Collections.emptyList;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
@@ -22,6 +21,7 @@ import org.junit.jupiter.api.Timeout;
 import com.github.pfichtner.jsipdialer.messages.CSeq;
 import com.github.pfichtner.jsipdialer.messages.MessageReceived;
 import com.github.pfichtner.jsipdialer.messages.MessageToSend;
+import com.github.pfichtner.jsipdialer.messages.SipStatus;
 
 @Timeout(value = CallExecutorTest.TIMEOUT_SECONDS, unit = SECONDS)
 class CallExecutorTest {
@@ -48,7 +48,7 @@ class CallExecutorTest {
 		Call call = new Call("123", "the callers name", 5);
 
 		var toAnswerFromServer = "<sip:abcde@xyz";
-		var answers = List.of(tryingAnswer(toAnswerFromServer)).iterator();
+		var answers = List.of(answerWithStatus(toAnswerFromServer, TRYING)).iterator();
 		connection.messageReceivedSupplier(() -> answers.hasNext() ? answers.next() : null);
 
 		callExecutor.execCall(call);
@@ -60,21 +60,12 @@ class CallExecutorTest {
 		assertThat(connection.sent()).hasSize(1 + 5 + countOfAckMessagesSent);
 	}
 
-	private MessageReceived tryingAnswer(String toAnswerFromServer) {
-		var status = TRYING;
-		CSeq seq = CSeq.of(1);
-		return new MessageReceived(
-				"SIP/2.0 ", statuscodeOf(status), status.name(), seq, Map.of("From", "<sip:someFrom>", "Via", "someVia",
-						"Call-ID", "someCallId", "To", toAnswerFromServer, "Contact", "<sip:someContact>"),
-				emptyList());
-	}
-
 	@Test
 	void withOkResponseWillTerminateAfterTimeout() throws Exception {
 		Call call = new Call("123", "the callers name", 5);
 
 		var toAnswerFromServer = "<sip:abcde@xyz";
-		var answers = List.of(okAnswer(toAnswerFromServer)).iterator();
+		var answers = List.of(answerWithStatus(toAnswerFromServer, OK)).iterator();
 		connection.messageReceivedSupplier(() -> answers.hasNext() ? answers.next() : null);
 
 		callExecutor.execCall(call);
@@ -129,19 +120,18 @@ class CallExecutorTest {
 		await().forever().until(() -> whereMatches("INVITE", "From", expectedValue));
 	}
 
-	private MessageReceived okAnswer(String to) {
-		var status = OK;
-		CSeq seq = CSeq.of(1);
-		return new MessageReceived("SIP/2.0 ", statuscodeOf(status), status.name(), seq, Map.of("From",
-				"<sip:someFrom>", "Via", "someVia", "Call-ID", "someCallId", "To", to, "Contact", "<sip:someContact>"),
-				emptyList());
-	}
-
 	private static MessageReceived unauthorizedAnswer(String authString) {
 		var status = UNAUTHORIZED;
-		CSeq seq = CSeq.of(1);
-		return new MessageReceived("SIP/2.0 ", statuscodeOf(status), status.name(), seq,
+		return new MessageReceived("SIP/2.0 ", statuscodeOf(status), status.name(), CSeq.of(1),
 				Map.of("WWW-Authenticate", authString), emptyList());
+	}
+
+	private MessageReceived answerWithStatus(String toAnswerFromServer, SipStatus status) {
+		CSeq seq = CSeq.of(1);
+		return new MessageReceived(
+				"SIP/2.0 ", statuscodeOf(status), status.name(), seq, Map.of("From", "<sip:someFrom>", "Via", "someVia",
+						"Call-ID", "someCallId", "To", toAnswerFromServer, "Contact", "<sip:someContact>"),
+				emptyList());
 	}
 
 	private boolean whereMatches(String command, String key, String expectedValue) {
