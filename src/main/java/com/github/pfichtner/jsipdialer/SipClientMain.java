@@ -10,8 +10,6 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
-import com.github.pfichtner.jsipdialer.messages.MessageFactory;
-
 public class SipClientMain {
 
 	private static final String JSIPDIALER = "jsipdialer";
@@ -74,7 +72,7 @@ public class SipClientMain {
 	}
 
 	protected void execCall(SipConfig sipConfig, Call call, Connection connection) throws Exception {
-		new CallExecutor(connection, sipConfig, new MessageFactory()).execCall(call);
+		new CallExecutor(connection, sipConfig).execCall(call);
 	}
 
 	private static String requireNonNull(String value, String errorMessage) throws ParseException {

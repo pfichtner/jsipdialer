@@ -9,6 +9,7 @@ public enum SipStatus {
 	CALL_DOES_NOT_EXIST(481), //
 	BUSY_HERE(486), //
 	REQUEST_CANCELLED(487), //
+	REQUEST_PENDING(491), //
 
 	DECLINE(603);
 

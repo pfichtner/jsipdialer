@@ -4,12 +4,18 @@ import static java.lang.System.currentTimeMillis;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import java.security.SecureRandom;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+import com.github.pfichtner.jsipdialer.messages.CSeq;
 import com.github.pfichtner.jsipdialer.messages.MessageReceived;
 import com.github.pfichtner.jsipdialer.messages.Statuscode;
 
 public class Call {
+
+	enum State {
+		INIT, INVITE_TRYING, CALL_ACTIVE, TERMINATED
+	}
 
 	private static class Try {
 
@@ -44,13 +50,15 @@ public class Call {
 	}
 
 	private final int callId = random();
+	private final int tagId = random();
 	private final String destinationNumber;
 	private final String callerName;
 	private final int timeout;
 
+	private CSeq cSeq = CSeq.of(1);
 	private MessageReceived received;
+	private State state = State.INIT;
 	private long startTime;
-	private boolean isInProgress;
 
 	private Try inviteTries = new Try(30, MILLISECONDS).maxTries(5);
 	private Try inviteWithAuthTries = new Try(30, MILLISECONDS).maxTries(3);
@@ -66,6 +74,10 @@ public class Call {
 		return callId;
 	}
 
+	public int tagId() {
+		return tagId;
+	}
+
 	public String destinationNumber() {
 		return destinationNumber;
 	}
@@ -78,13 +90,35 @@ public class Call {
 		return timeout;
 	}
 
+	public void increaeSeq() {
+		this.cSeq = cSeq.next();
+	}
+
+	public CSeq cSeq() {
+		return cSeq;
+	}
+
 	public void received(MessageReceived received) {
 		this.received = received;
-
 	}
 
 	public MessageReceived received() {
 		return received;
+	}
+
+	public State state() {
+		return state;
+	}
+
+	public void state(State state) {
+		if (this.state == State.INIT && state != State.INIT) {
+			this.startTime = currentTimeMillis();
+		}
+		this.state = state;
+	}
+
+	public boolean stateIs(State state) {
+		return Objects.equals(this.state, state);
 	}
 
 	public Statuscode statuscode() {
@@ -93,17 +127,6 @@ public class Call {
 
 	private static int random() {
 		return new SecureRandom().nextInt(0x3fffffff + 1);
-	}
-
-	public boolean inProgress() {
-		return this.isInProgress;
-	}
-
-	public void inProgress(boolean inProgress) {
-		if (inProgress && !this.isInProgress) {
-			this.startTime = currentTimeMillis();
-		}
-		this.isInProgress = inProgress;
 	}
 
 	public void increaseInvites() {
@@ -123,7 +146,7 @@ public class Call {
 		return inviteWithAuthTries.nowPossibleNext();
 	}
 
-	public boolean shouldTryBye() {
+	public boolean shouldTryTerminate() {
 		return isTimedout() && byeTries.nowPossibleNext();
 	}
 
@@ -131,7 +154,7 @@ public class Call {
 		return currentTimeMillis() - startTime >= timeout * 1000;
 	}
 
-	public void increaseBye() {
+	public void increaseTerminate() {
 		byeTries.increase();
 	}
 

@@ -19,7 +19,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
-import com.github.pfichtner.jsipdialer.messages.MessageFactory;
+import com.github.pfichtner.jsipdialer.messages.CSeq;
 import com.github.pfichtner.jsipdialer.messages.MessageReceived;
 import com.github.pfichtner.jsipdialer.messages.MessageToSend;
 
@@ -30,7 +30,7 @@ class CallExecutorTest {
 
 	ConnectionStub connection = new ConnectionStub();
 	SipConfig config = new SipConfig("aSipUser", "secret");
-	CallExecutor callExecutor = new CallExecutor(connection, config, new MessageFactory());
+	CallExecutor callExecutor = new CallExecutor(connection, config);
 
 	@Test
 	void noResponseWillTerminateAfterTimeout() throws Exception {
@@ -88,8 +88,8 @@ class CallExecutorTest {
 		var call = new Call("123", "the callers name", 2 * TIMEOUT_SECONDS);
 		callInBackground(call);
 
-		var expectedValue = "\"%s\" <sip:%s@%s>".formatted(call.callerName(), config.getUsername(),
-				connection.remoteServerAddress());
+		var expectedValue = "\"%s\" <sip:%s@%s>;tag=%010d".formatted(call.callerName(), config.getUsername(),
+				connection.remoteServerAddress(), call.tagId());
 		await().forever().until(() -> whereMatches("INVITE", "From", expectedValue));
 	}
 
@@ -98,31 +98,23 @@ class CallExecutorTest {
 		var call = new Call("123", null, 2 * TIMEOUT_SECONDS);
 
 		callInBackground(call);
-		var expectedValue = "<sip:%s@%s>".formatted(config.getUsername(), connection.remoteServerAddress());
+		var expectedValue = "<sip:%s@%s>;tag=%010d".formatted(config.getUsername(), connection.remoteServerAddress(),
+				call.tagId());
 		await().forever().until(() -> whereMatches("INVITE", "From", expectedValue));
-	}
-
-	@Test
-	void useToFromServer() throws Exception {
-		var toAnswerFromServer = "<sip:noMatterWhatsTheTheClientSendsThisIsTheAnswerFromTheServer;tag=123;branch=456>";
-		var answer = okAnswer(toAnswerFromServer);
-		connection.messageReceivedSupplier(() -> answer);
-
-		var call = new Call("123", "the callers name", 1);
-		callInBackground(call);
-
-		await().forever().until(() -> whereMatches("BYE", "To", toAnswerFromServer));
 	}
 
 	private MessageReceived okAnswer(String to) {
 		var status = OK;
-		return new MessageReceived("SIP/2.0 ", statuscodeOf(status), status.name(),
-				Map.of("From", "<sip:someFrom>", "Via", "someVia", "Call-ID", "someCallId", "To", to), emptyList());
+		CSeq seq = CSeq.of(1);
+		return new MessageReceived("SIP/2.0 ", statuscodeOf(status), status.name(), seq, Map.of("From",
+				"<sip:someFrom>", "Via", "someVia", "Call-ID", "someCallId", "To", to, "Contact", "<sip:someContact>"),
+				emptyList());
 	}
 
 	private static MessageReceived unauthorizedAnswer(String authString) {
 		var status = UNAUTHORIZED;
-		return new MessageReceived("SIP/2.0 ", statuscodeOf(status), status.name(),
+		CSeq seq = CSeq.of(1);
+		return new MessageReceived("SIP/2.0 ", statuscodeOf(status), status.name(), seq,
 				Map.of("WWW-Authenticate", authString), emptyList());
 	}
 

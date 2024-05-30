@@ -53,6 +53,10 @@ public class Statuscode {
 		return false;
 	}
 
+	public boolean is1xx() {
+		return hundreds() == 1;
+	}
+
 	public boolean is2xx() {
 		return hundreds() == 2;
 	}

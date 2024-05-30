@@ -52,10 +52,10 @@ public class UdpConnection implements Connection, AutoCloseable {
 			socket.receive(receivePacket);
 			response = new String(receivePacket.getData(), 0, receivePacket.getLength());
 			logger.log(INFO, () -> "Response from SIP Server: " + response);
+			return MessageReceived.parse(response);
 		} catch (SocketTimeoutException e) {
 			return null;
 		}
-		return MessageReceived.parse(response);
 	}
 
 	@Override
