@@ -1,6 +1,6 @@
 package com.github.pfichtner.jsipdialer;
 
-import static com.github.pfichtner.jsipdialer.messages.SipStatus.OK;
+import static com.github.pfichtner.jsipdialer.messages.SipStatus.*;
 import static com.github.pfichtner.jsipdialer.messages.SipStatus.UNAUTHORIZED;
 import static com.github.pfichtner.jsipdialer.messages.Statuscode.statuscodeOf;
 import static java.util.Collections.emptyList;
@@ -41,6 +41,32 @@ class CallExecutorTest {
 		assertThat(filterCommands(connection.sent(), "INVITE")).hasSize(5);
 		assertThat(filterCommands(connection.sent(), "CANCEL")).hasSize(5);
 		assertThat(connection.sent()).hasSize(5 + 5);
+	}
+
+	@Test
+	void withTryingResponseWillTerminateAfterTimeout() throws Exception {
+		Call call = new Call("123", "the callers name", 5);
+
+		var toAnswerFromServer = "<sip:abcde@xyz";
+		var answers = List.of(tryingAnswer(toAnswerFromServer)).iterator();
+		connection.messageReceivedSupplier(() -> answers.hasNext() ? answers.next() : null);
+
+		callExecutor.execCall(call);
+
+		assertThat(call.statuscode()).isEqualTo(statuscodeOf(TRYING));
+		int countOfAckMessagesSent = 1;
+		assertThat(filterCommands(connection.sent(), "INVITE")).hasSize(1);
+		assertThat(filterCommands(connection.sent(), "CANCEL")).hasSize(5);
+		assertThat(connection.sent()).hasSize(1 + 5 + countOfAckMessagesSent);
+	}
+
+	private MessageReceived tryingAnswer(String toAnswerFromServer) {
+		var status = TRYING;
+		CSeq seq = CSeq.of(1);
+		return new MessageReceived(
+				"SIP/2.0 ", statuscodeOf(status), status.name(), seq, Map.of("From", "<sip:someFrom>", "Via", "someVia",
+						"Call-ID", "someCallId", "To", toAnswerFromServer, "Contact", "<sip:someContact>"),
+				emptyList());
 	}
 
 	@Test
