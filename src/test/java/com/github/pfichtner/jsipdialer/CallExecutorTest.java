@@ -1,5 +1,6 @@
 package com.github.pfichtner.jsipdialer;
 
+import static com.github.pfichtner.jsipdialer.messages.Constants.SIP_VERSION;
 import static com.github.pfichtner.jsipdialer.messages.SipStatus.*;
 import static com.github.pfichtner.jsipdialer.messages.Statuscode.statuscodeOf;
 import static java.util.Collections.emptyList;
@@ -122,15 +123,15 @@ class CallExecutorTest {
 
 	private static MessageReceived unauthorizedAnswer(String authString) {
 		var status = UNAUTHORIZED;
-		return new MessageReceived("SIP/2.0 ", statuscodeOf(status), status.name(), CSeq.of(1),
+		return new MessageReceived(SIP_VERSION, statuscodeOf(status), status.name(), CSeq.of(1),
 				Map.of("WWW-Authenticate", authString), emptyList());
 	}
 
-	private MessageReceived answerWithStatus(String toAnswerFromServer, SipStatus status) {
+	private static MessageReceived answerWithStatus(String toAnswerFromServer, SipStatus status) {
 		CSeq seq = CSeq.of(1);
 		return new MessageReceived(
-				"SIP/2.0 ", statuscodeOf(status), status.name(), seq, Map.of("From", "<sip:someFrom>", "Via", "someVia",
-						"Call-ID", "someCallId", "To", toAnswerFromServer, "Contact", "<sip:someContact>"),
+				SIP_VERSION, statuscodeOf(status), status.name(), seq, Map.of("From", "<sip:someFrom>", "Via",
+						"someVia", "Call-ID", "someCallId", "To", toAnswerFromServer, "Contact", "<sip:someContact>"),
 				emptyList());
 	}
 
