@@ -55,7 +55,7 @@ public class Call {
 	private final String callerName;
 	private final int timeout;
 
-	private CSeq cSeq = CSeq.of(1);
+	private CSeq cSeq = CSeq.of(0);
 	private MessageReceived received;
 	private State state = State.INIT;
 	private long startTime;
@@ -130,7 +130,6 @@ public class Call {
 	}
 
 	public void increaseInvites() {
-		System.currentTimeMillis();
 		inviteTries.increase();
 	}
 

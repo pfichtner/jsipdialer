@@ -55,7 +55,7 @@ class CallExecutorTest {
 		callExecutor.execCall(call);
 
 		assertThat(call.statuscode()).isEqualTo(statuscodeOf(TRYING));
-		int countOfAckMessagesSent = 1;
+		int countOfAckMessagesSent = 0;
 		assertThat(filterCommands(connection.sent(), "INVITE")).hasSize(1);
 		assertThat(filterCommands(connection.sent(), "CANCEL")).hasSize(5);
 		assertThat(connection.sent()).hasSize(1 + 5 + countOfAckMessagesSent);

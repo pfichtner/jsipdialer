@@ -14,6 +14,7 @@ import static com.github.pfichtner.jsipdialer.messages.SipStatus.TRYING;
 import static java.lang.String.format;
 import static java.net.NetworkInterface.getNetworkInterfaces;
 import static java.util.Collections.list;
+import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.SEVERE;
 import static java.util.stream.Collectors.joining;
 
@@ -35,7 +36,7 @@ import com.github.pfichtner.jsipdialer.messages.MessageToSend;
 public class CallExecutor {
 
 	private static final Logger logger = Logger.getLogger(CallExecutor.class.getName());
-	private static final Pattern quoteedPattern = Pattern.compile("<(.*?)>");
+	private static final Pattern quotedPattern = Pattern.compile("<(.*?)>");
 
 	private final String locIpAddr = localIpAddress().map(InetAddress::getHostAddress).orElse("0.0.0.0");
 
@@ -54,14 +55,15 @@ public class CallExecutor {
 		while (!call.stateIs(TERMINATED) && !call.shouldGiveUp()) {
 			if ((call.stateIs(INIT) || call.stateIs(INVITE_TRYING)) && call.shouldTryInvite()) {
 				call.increaseInvites();
-				connection.send(inviteMessage = inviteMessage(call));
 				call.increaeSeq();
+				connection.send(inviteMessage = inviteMessage(call));
 				call.state(INVITE_TRYING);
 			}
 
 			if (call.shouldTryTerminate()) {
 				call.increaseTerminate();
 				if (call.stateIs(INVITE_TRYING)) {
+					call.increaeSeq();
 					connection.send(cancelMessage(call, inviteMessage, tryingMessage));
 				} else if (call.stateIs(CALL_ACTIVE)) {
 					connection.send(byeMessage(call, inviteMessage, okForInviteMessage));
@@ -89,18 +91,17 @@ public class CallExecutor {
 			}
 
 			if (call.statuscode().isOneOf(TRYING, REQUEST_PENDING)) {
-				connection.send(ackMessage(call, inviteMessage));
+				logger.log(FINE, "Received " + call.received());
 			} else if (call.statuscode().isOneOf(BUSY_HERE, DECLINE, REQUEST_CANCELLED)) {
 				call.state(TERMINATED);
-				connection.send(ackMessage(call, inviteMessage));
 			} else if (call.statuscode().is(CALL_DOES_NOT_EXIST)) {
 				logger.log(SEVERE, "Error on call handling of " + call.received());
 				call.state(TERMINATED);
 			} else if (call.stateIs(INVITE_TRYING) && call.statuscode().isUnauthorized()
 					&& call.shouldTryInviteWithAuth()) {
 				call.increaseInvitesWithAuth();
-				connection.send(inviteMessage = addAuthorization(call, inviteMessage(call)));
 				call.increaeSeq();
+				connection.send(inviteMessage = addAuthorization(call, inviteMessage(call)));
 			}
 		}
 	}
@@ -165,7 +166,7 @@ public class CallExecutor {
 
 	private static String unqouted(MessageReceived message, String key) {
 		var value = message.get(key);
-		var matcher = quoteedPattern.matcher(value);
+		var matcher = quotedPattern.matcher(value);
 		return matcher.find() ? matcher.group(1) : value;
 	}
 
