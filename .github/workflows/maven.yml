@@ -53,7 +53,7 @@ jobs:
           fi
           (cd target && find . -maxdepth 1 -type f -print0 | tar --null -czf "../publish-artifacts/jsipdialer_${tarname}.tar.gz" --files-from=-)
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: publish-artifacts-${{ matrix.os }}
           path: "publish-artifacts/*"
