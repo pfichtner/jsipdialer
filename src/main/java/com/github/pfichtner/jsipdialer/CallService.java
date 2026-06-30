@@ -6,6 +6,9 @@ import java.util.concurrent.TimeUnit;
 import org.mjsip.sdp.SdpMessage;
 import org.mjsip.sip.address.NameAddress;
 import org.mjsip.sip.address.SipURI;
+import org.mjsip.sdp.MediaDescriptor;
+import org.mjsip.sdp.field.ConnectionField;
+import org.mjsip.sdp.field.MediaField;
 import org.mjsip.sip.call.Call;
 import org.mjsip.sip.call.CallListenerAdapter;
 import org.mjsip.sip.call.ExtendedCall;
@@ -46,8 +49,8 @@ public class CallService {
 		SipConfig sipConfig = new SipConfig();
 		sipConfig.setTransportProtocols(new String[] { transport });
 		sipConfig.setOutboundProxy(new SipURI(serverAddress, serverPort));
+		sipConfig.setHostPort(15062);
 		sipConfig.normalize();
-		sipConfig.setHostPort(0);
 
 		SchedulerConfig schedulerConfig = new SchedulerConfig();
 		SipProvider sipProvider = new SipProvider(sipConfig, new ConfiguredScheduler(schedulerConfig));
@@ -114,7 +117,13 @@ public class CallService {
 				? new NameAddress(callerName, new SipURI(username, serverAddress))
 				: new NameAddress(new SipURI(username, serverAddress));
 
-		call.call(callee, caller, null);
+		SdpMessage sdpOffer = SdpMessage.createSdpMessage(username, "0.0.0.0");
+		sdpOffer = sdpOffer.addMediaDescriptor(new MediaDescriptor(
+				new MediaField("audio", 9, 1, "RTP/AVP", "0"),
+				new ConnectionField(ConnectionField.addressType("0.0.0.0"), "0.0.0.0"),
+				java.util.Collections.emptyList()));
+
+		call.call(callee, caller, sdpOffer);
 
 		latch.await(5, TimeUnit.MINUTES);
 

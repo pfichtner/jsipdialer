@@ -37,7 +37,7 @@ public class SipClientMain {
 		}
 	}
 
-	int doMain(String[] args) throws Exception {
+	public int doMain(String[] args) throws Exception {
 		var options = options();
 		var parser = new DefaultParser();
 
