@@ -7,8 +7,6 @@ import static org.approvaltests.Approvals.verify;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -35,27 +33,33 @@ class SipClientMainTest {
 
 	private final class SipClientMainSpy extends SipClientMain {
 
-		private final Connection theConnection = (Connection) Proxy.newProxyInstance(getClass().getClassLoader(),
-				new Class[] { Connection.class }, (InvocationHandler) (proxy, method, args) -> null);
-
-		private String server;
-		private Integer port;
-		private SipConfig sipConfig;
-		private Call call;
-		private Connection connection;
-
-		@Override
-		protected Connection makeConnection(String server, int port) throws Exception {
-			this.server = server;
-			this.port = port;
-			return theConnection;
-		}
+		String serverAddress;
+		int serverPort;
+		String username;
+		String password;
+		String destinationNumber;
+		String callerName;
+		int timeout;
+		String transport;
+		boolean callServiceReturn;
 
 		@Override
-		protected void execCall(SipConfig sipConfig, Call call, Connection connection) throws Exception {
-			this.sipConfig = sipConfig;
-			this.call = call;
-			this.connection = connection;
+		protected CallService createCallService(String serverAddress, int serverPort, String username,
+				String password, String destinationNumber, String callerName, int timeout, String transport) {
+			this.serverAddress = serverAddress;
+			this.serverPort = serverPort;
+			this.username = username;
+			this.password = password;
+			this.destinationNumber = destinationNumber;
+			this.callerName = callerName;
+			this.timeout = timeout;
+			this.transport = transport;
+			return new CallService(null, 0, null, null, null, null, 0, null) {
+				@Override
+				public boolean call() {
+					return callServiceReturn;
+				}
+			};
 		}
 
 	}
@@ -110,15 +114,14 @@ class SipClientMainTest {
 	void allRequiredParametersSet() throws Exception {
 		callMain(setValuesOn(and(requiredArgs(), ARGNAME_SIP_USERNAME, ARGNAME_SIP_PASSWORD)));
 		assertSoftly(s -> {
-			s.assertThat(sipClientMainSpy.server).isEqualTo(value(ARGNAME_SIP_SERVER_ADDRESS));
-			s.assertThat(sipClientMainSpy.call.destinationNumber()).isEqualTo(value(ARGNAME_DESTINATION_NUMBER));
-			s.assertThat(sipClientMainSpy.sipConfig.getUsername()).isEqualTo(value(ARGNAME_SIP_USERNAME));
-			s.assertThat(sipClientMainSpy.sipConfig.getPassword()).isEqualTo(value(ARGNAME_SIP_PASSWORD));
-			s.assertThat(sipClientMainSpy.connection).isSameAs(sipClientMainSpy.theConnection);
-
-			s.assertThat(sipClientMainSpy.port).isEqualTo(SipClientMain.DEFAULT_SIPPORT);
-			s.assertThat(sipClientMainSpy.call.callerName()).isNull();
-			s.assertThat(sipClientMainSpy.call.timeout()).isEqualTo(SipClientMain.DEFAULT_TIMEOUT);
+			s.assertThat(sipClientMainSpy.serverAddress).isEqualTo(value(ARGNAME_SIP_SERVER_ADDRESS));
+			s.assertThat(sipClientMainSpy.destinationNumber).isEqualTo(value(ARGNAME_DESTINATION_NUMBER));
+			s.assertThat(sipClientMainSpy.username).isEqualTo(value(ARGNAME_SIP_USERNAME));
+			s.assertThat(sipClientMainSpy.password).isEqualTo(value(ARGNAME_SIP_PASSWORD));
+			s.assertThat(sipClientMainSpy.serverPort).isEqualTo(SipClientMain.DEFAULT_SIPPORT);
+			s.assertThat(sipClientMainSpy.callerName).isNull();
+			s.assertThat(sipClientMainSpy.timeout).isEqualTo(SipClientMain.DEFAULT_TIMEOUT);
+			s.assertThat(sipClientMainSpy.transport).isEqualTo("udp");
 		});
 	}
 
@@ -128,8 +131,8 @@ class SipClientMainTest {
 	void allRequiredParametersSetWhereUsernameAndPasswordAreSetViaEnvVars() throws Exception {
 		callMain(setValuesOn(requiredArgs()));
 		assertSoftly(s -> {
-			s.assertThat(sipClientMainSpy.sipConfig.getUsername()).isEqualTo("userNameViaEnv");
-			s.assertThat(sipClientMainSpy.sipConfig.getPassword()).isEqualTo("passwordViaEnv");
+			s.assertThat(sipClientMainSpy.username).isEqualTo("userNameViaEnv");
+			s.assertThat(sipClientMainSpy.password).isEqualTo("passwordViaEnv");
 		});
 	}
 
@@ -138,9 +141,9 @@ class SipClientMainTest {
 		callMain(setValuesOn(and(requiredArgs(), ARGNAME_SIP_USERNAME, ARGNAME_SIP_PASSWORD, ARGNAME_SIP_SERVER_PORT,
 				ARGNAME_CALLER_NAME, ARGNAME_TIMEOUT)));
 		assertSoftly(s -> {
-			s.assertThat(sipClientMainSpy.port).isEqualTo(value(ARGNAME_SIP_SERVER_PORT));
-			s.assertThat(sipClientMainSpy.call.callerName()).isEqualTo(value(ARGNAME_CALLER_NAME));
-			s.assertThat(sipClientMainSpy.call.timeout()).isEqualTo(value(ARGNAME_TIMEOUT));
+			s.assertThat(sipClientMainSpy.serverPort).isEqualTo(value(ARGNAME_SIP_SERVER_PORT));
+			s.assertThat(sipClientMainSpy.callerName).isEqualTo(value(ARGNAME_CALLER_NAME));
+			s.assertThat(sipClientMainSpy.timeout).isEqualTo(value(ARGNAME_TIMEOUT));
 		});
 	}
 
