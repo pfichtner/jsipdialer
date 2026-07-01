@@ -71,6 +71,7 @@
 			<version>2.3.0</version>
 			<scope>test</scope>
 		</dependency>
+
 	</dependencies>
 
 	<build>
@@ -124,6 +125,7 @@
 						--add-opens java.base/java.util=ALL-UNNAMED
 						--add-opens java.base/java.lang=ALL-UNNAMED
 					</argLine>
+
 				</configuration>
 				<executions>
 					<execution>

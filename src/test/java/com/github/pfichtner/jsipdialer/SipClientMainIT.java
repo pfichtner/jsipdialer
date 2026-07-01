@@ -2,8 +2,13 @@ package com.github.pfichtner.jsipdialer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.nio.file.Paths;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -30,18 +35,19 @@ import org.mjsip.ua.registration.RegistrationClientListener;
 @Tag("integration")
 class SipClientMainIT {
 
-	private static final String DOCKER_IMAGE = "kamailio-test";
-	private static final String CONTAINER_NAME = "jsipdialer-kamailio";
 	private static final int PROXY_PORT = 15060;
 	private static final int RECEIVER_PORT = 15061;
+	private static final String IMAGE_NAME = "kamailio-test";
 
 	private static SipProvider receiverProvider;
 	private static RegistrationClient regClient;
+	private static String containerId;
 
 	@BeforeAll
 	static void setUpAll() throws Exception {
-		stopContainer();
-		startContainer();
+		buildDockerImage();
+		containerId = startDockerContainer();
+		Thread.sleep(2000);
 		receiverProvider = createReceiverProvider();
 		registerReceiver();
 		Thread.sleep(500);
@@ -53,7 +59,8 @@ class SipClientMainIT {
 			regClient.halt();
 		if (receiverProvider != null)
 			receiverProvider.halt();
-		stopContainer();
+		if (containerId != null)
+			stopDockerContainer(containerId);
 	}
 
 	@Test
@@ -90,20 +97,38 @@ class SipClientMainIT {
 		}
 	}
 
-	private static void startContainer() throws Exception {
-		stopContainer();
-		var pb = new ProcessBuilder("docker", "run", "-d", "--name", CONTAINER_NAME,
-				"--network", "host", DOCKER_IMAGE);
-		pb.inheritIO();
-		var process = pb.start();
-		process.waitFor(10, TimeUnit.SECONDS);
-		Thread.sleep(2000);
+	private static void buildDockerImage() throws Exception {
+		File dockerDir = Paths.get("docker").toAbsolutePath().toFile();
+		ProcessBuilder pb = new ProcessBuilder("docker", "build", "-t", IMAGE_NAME, ".");
+		pb.directory(dockerDir);
+		pb.redirectErrorStream(true);
+		Process p = pb.start();
+		String output = new BufferedReader(new InputStreamReader(p.getInputStream())).lines()
+				.collect(Collectors.joining("\n"));
+		int exit = p.waitFor();
+		if (exit != 0) {
+			throw new RuntimeException("Docker build failed:\n" + output);
+		}
 	}
 
-	private static void stopContainer() {
+	private static String startDockerContainer() throws Exception {
+		ProcessBuilder pb = new ProcessBuilder("docker", "run", "-d", "--network", "host", "--name", "kamailio-it",
+				IMAGE_NAME);
+		pb.redirectErrorStream(true);
+		Process p = pb.start();
+		String output = new BufferedReader(new InputStreamReader(p.getInputStream())).lines()
+				.collect(Collectors.joining("\n")).trim();
+		int exit = p.waitFor();
+		if (exit != 0) {
+			throw new RuntimeException("Docker run failed:\n" + output);
+		}
+		return output;
+	}
+
+	private static void stopDockerContainer(String id) {
 		try {
-			new ProcessBuilder("docker", "rm", "-f", CONTAINER_NAME)
-					.inheritIO().start().waitFor(5, TimeUnit.SECONDS);
+			new ProcessBuilder("docker", "rm", "-f", id).start().waitFor(5, TimeUnit.SECONDS);
+			new ProcessBuilder("docker", "rm", "-f", "kamailio-it").start().waitFor(5, TimeUnit.SECONDS);
 		} catch (Exception e) {
 			// ignore
 		}
