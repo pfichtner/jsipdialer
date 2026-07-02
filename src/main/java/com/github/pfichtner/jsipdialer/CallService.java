@@ -50,6 +50,7 @@ public class CallService {
 		sipConfig.setTransportProtocols(new String[] { transport });
 		sipConfig.setOutboundProxy(new SipURI(serverAddress, serverPort));
 		sipConfig.setHostPort(15062);
+		sipConfig.setViaAddrIPv4("127.0.0.1");
 		sipConfig.normalize();
 
 		SchedulerConfig schedulerConfig = new SchedulerConfig();

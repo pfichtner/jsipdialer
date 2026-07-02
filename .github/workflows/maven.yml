@@ -19,6 +19,9 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: 'maven'
+          server-id: github-mjsip
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
       - uses: graalvm/setup-graalvm@v1
         with:
           java-version: '17'
