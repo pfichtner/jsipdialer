@@ -39,10 +39,23 @@ class SipClientMainIT {
 		recvConfig.setTransportProtocols(new String[] { "udp" });
 		recvConfig.setHostPort(15061);
 		recvConfig.setViaAddrIPv4("127.0.0.1");
+		recvConfig.setTransactionTimeout(5000);
+		recvConfig.setForceRport(true);
 		recvConfig.normalize();
+
+		SdpMessage localSdp = SdpMessage.createSdpMessage("receiver", "0.0.0.0");
 
 		SipProvider recvProvider = new SipProvider(recvConfig,
 				new ConfiguredScheduler(schedConfig));
+
+		// Add promiscuous listener on receiver to see all messages
+		recvProvider.addPromiscuousListener(new SipProviderListener() {
+			@Override
+			public void onReceivedMessage(SipProvider provider, org.mjsip.sip.message.SipMessage msg) {
+				System.err.println("RECV_PROMISC: " + msg.getFirstLine());
+				System.err.flush();
+			}
+		});
 
 		SipUser recvUser = new SipUser(
 				new NameAddress(new SipURI("12345", "127.0.0.1")),
@@ -53,13 +66,18 @@ class SipClientMainIT {
 			@Override
 			public void onCallInvite(Call call, NameAddress callee,
 					NameAddress caller, SdpMessage sdp, org.mjsip.sip.message.SipMessage invite) {
-				System.err.println("RECV: invite from " + caller);
+				System.err.println("RECV: invite from " + caller + ", request-uri="
+						+ invite.getRequestLine().getAddress());
 				System.err.flush();
-				call.accept(call.getLocalSessionDescriptor());
+				SdpMessage local = call.getLocalSessionDescriptor();
+				System.err.println("RECV: localSdp=" + local);
+				System.err.flush();
+				call.accept(local);
+				System.err.println("RECV: accept called, SDP sent");
+				System.err.flush();
 			}
 		});
 
-		SdpMessage localSdp = SdpMessage.createSdpMessage("receiver", "0.0.0.0");
 		recvCall.setLocalSessionDescriptor(localSdp);
 		recvCall.listen();
 
@@ -71,6 +89,8 @@ class SipClientMainIT {
 		callConfig.setHostPort(15063);
 		callConfig.setViaAddrIPv4("127.0.0.1");
 		callConfig.setOutboundProxy(new SipURI("127.0.0.1", 15061));
+		callConfig.setTransactionTimeout(5000);
+		callConfig.setUseRport(true);
 		callConfig.normalize();
 
 		SipProvider callerProvider = new SipProvider(callConfig,
@@ -81,9 +101,13 @@ class SipClientMainIT {
 			@Override
 			public void onReceivedMessage(SipProvider provider, SipMessage msg) {
 				System.err.println("CALLER_PROMISC: " + msg.getFirstLine());
-				if (!msg.isRequest()) {
+				if (msg.isRequest()) {
+					System.err.println("CALLER_PROMISC: req SipId(client)=" + SipId.createTransactionClientId(msg));
+					System.err.println("CALLER_PROMISC: req Via=" + msg.getViaHeader());
+				} else {
 					SipId respSipId = SipId.createTransactionClientId(msg);
 					System.err.println("CALLER_PROMISC: resp SipId=" + respSipId);
+					System.err.println("CALLER_PROMISC: resp Via=" + msg.getViaHeader());
 				}
 				System.err.flush();
 				if (!msg.isRequest()) {
@@ -123,12 +147,13 @@ class SipClientMainIT {
 			}
 		});
 
-		callerCall.setLocalSessionDescriptor(
-				SdpMessage.createSdpMessage("caller", "0.0.0.0"));
+		SdpMessage callerSdp = SdpMessage.createSdpMessage("caller", "0.0.0.0");
+		callerCall.setLocalSessionDescriptor(callerSdp);
 		System.err.println("CALLER: about to call, provider port=" + callerProvider.getPort()
 				+ " viaAddr=" + callerProvider.getViaAddress());
 		System.err.flush();
 		callerCall.call(new NameAddress(new SipURI("12345", "127.0.0.1")));
+		System.err.flush();
 
 		System.err.println("CALLER: waiting...");
 		System.err.flush();
