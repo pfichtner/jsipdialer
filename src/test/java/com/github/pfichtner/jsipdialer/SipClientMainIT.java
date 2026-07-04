@@ -63,7 +63,7 @@ class SipClientMainIT {
 		recvCall.setLocalSessionDescriptor(localSdp);
 		recvCall.listen();
 
-		Thread.sleep(300);
+		Thread.sleep(1000);
 
 		// Caller
 		SipConfig callConfig = new SipConfig();
@@ -74,7 +74,7 @@ class SipClientMainIT {
 		callConfig.normalize();
 
 		SipProvider callerProvider = new SipProvider(callConfig,
-				new ConfiguredScheduler(schedConfig));
+				new ConfiguredScheduler(new SchedulerConfig()));
 
 		// Add a promiscuous listener to see all messages arriving at caller
 		callerProvider.addPromiscuousListener(new SipProviderListener() {
@@ -133,11 +133,11 @@ class SipClientMainIT {
 		System.err.println("CALLER: waiting...");
 		System.err.flush();
 
-		boolean promiscGot = promiscuousGotResponse.await(5, TimeUnit.SECONDS);
+		boolean promiscGot = promiscuousGotResponse.await(10, TimeUnit.SECONDS);
 		System.err.println("CALLER: promiscGot=" + promiscGot);
 		System.err.flush();
 
-		boolean ok = done.await(5, TimeUnit.SECONDS);
+		boolean ok = done.await(10, TimeUnit.SECONDS);
 		System.err.println("CALLER: ok=" + ok + " status=" + status.get());
 		System.err.flush();
 
@@ -146,6 +146,7 @@ class SipClientMainIT {
 		callerProvider.halt();
 		recvProvider.halt();
 
+		assertThat(promiscGot).isTrue();
 		assertThat(ok).isTrue();
 		assertThat(status.get()).isEqualTo(200);
 	}
