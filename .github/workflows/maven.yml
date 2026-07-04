@@ -8,6 +8,8 @@ permissions:
 jobs:
   build:
     name: jsipdialer on ${{ matrix.os }}
+    env:
+      MAVEN_PKG_TOKEN: ${{ secrets.MAVEN_PKG_TOKEN }}
     runs-on: ${{ matrix.os == 'darwin' && 'macos-latest' || matrix.os == 'linux' && 'ubuntu-latest' || matrix.os == 'windows' && 'windows-latest' }}
     strategy:
       matrix:
@@ -19,9 +21,9 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: 'maven'
-          server-id: github-mjsip
+          server-id: github
           server-username: GITHUB_ACTOR
-          server-password: GITHUB_TOKEN
+          server-password: MAVEN_PKG_TOKEN
       - uses: graalvm/setup-graalvm@v1
         with:
           java-version: '17'
