@@ -1,4 +1,4 @@
-name: GraalVM Native Image builds
+name: Build
 
 on: [push, pull_request]
 
@@ -24,12 +24,6 @@ jobs:
           server-id: github
           server-username: GITHUB_ACTOR
           server-password: MAVEN_PKG_TOKEN
-      - uses: graalvm/setup-graalvm@v1
-        with:
-          java-version: '17'
-          distribution: 'graalvm'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          native-image-job-reports: 'true'
       - name: Build with Maven
         run: ./mvnw verify
       - name: Install UPX
