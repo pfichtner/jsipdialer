@@ -21,41 +21,15 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: 'maven'
-      - name: Configure Maven for GitHub Packages
-        shell: bash
-        run: |
-          mkdir -p ~/.m2
-          cat > ~/.m2/settings.xml <<EOF
-          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
-            <servers>
-              <server>
-                <id>github</id>
-                <username>$GITHUB_ACTOR</username>
-                <password>$MAVEN_PKG_TOKEN</password>
-              </server>
-            </servers>
-          </settings>
-          EOF
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: MAVEN_PKG_TOKEN
       - uses: graalvm/setup-graalvm@v1
         with:
           java-version: '17'
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           native-image-job-reports: 'true'
-      - name: Debug auth
-        shell: bash
-        run: |
-          echo "GITHUB_ACTOR=$GITHUB_ACTOR"
-          echo "TOKEN set: $([[ -n "$MAVEN_PKG_TOKEN" ]] && echo yes || echo no)"
-          echo "---settings.xml server id---"
-          grep '<id>' ~/.m2/settings.xml
-          echo "---test curl---"
-          code=$(curl -s -o /dev/null -w "%{http_code}" \
-            -u "$GITHUB_ACTOR:$MAVEN_PKG_TOKEN" \
-            "https://maven.pkg.github.com/haumacher/mjSIP/org/mjsip/mjsip-ua/2.0.5/mjsip-ua-2.0.5.pom" 2>&1)
-          echo "HTTP $code"
       - name: Build with Maven
         run: ./mvnw verify
       - name: Install UPX
