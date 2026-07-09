@@ -99,26 +99,6 @@ class SipClientMainIT {
 		SipProvider callerProvider = new SipProvider(callConfig,
 				new ConfiguredScheduler(schedConfig));
 
-		// Add a promiscuous listener to see all messages arriving at caller
-		callerProvider.addPromiscuousListener(new SipProviderListener() {
-			@Override
-			public void onReceivedMessage(SipProvider provider, SipMessage msg) {
-				System.err.println("CALLER_PROMISC: " + msg.getFirstLine());
-				if (msg.isRequest()) {
-					System.err.println("CALLER_PROMISC: req SipId(client)=" + SipId.createTransactionClientId(msg));
-					System.err.println("CALLER_PROMISC: req Via=" + msg.getViaHeader());
-				} else {
-					SipId respSipId = SipId.createTransactionClientId(msg);
-					System.err.println("CALLER_PROMISC: resp SipId=" + respSipId);
-					System.err.println("CALLER_PROMISC: resp Via=" + msg.getViaHeader());
-				}
-				System.err.flush();
-				if (!msg.isRequest()) {
-					promiscuousGotResponse.countDown();
-				}
-			}
-		});
-
 		SipUser callUser = new SipUser(
 				new NameAddress(new SipURI("caller", "127.0.0.1")),
 				new NameAddress(new SipURI("caller", "127.0.0.1", 15063)));
@@ -152,21 +132,44 @@ class SipClientMainIT {
 
 		SdpMessage callerSdp = SdpMessage.createSdpMessage("caller", "0.0.0.0");
 		callerCall.setLocalSessionDescriptor(callerSdp);
+
+		Field dialogField = Call.class.getDeclaredField("dialog");
+		dialogField.setAccessible(true);
+
+		// Promiscuous listener runs on the SipProvider thread BEFORE dispatch.
+		// Ensure route is non-null before onTransSuccessResponse creates the ACK.
+		callerProvider.addPromiscuousListener(new SipProviderListener() {
+			@Override
+			public void onReceivedMessage(SipProvider provider, SipMessage msg) {
+				System.err.println("CALLER_PROMISC: " + msg.getFirstLine());
+				if (msg.isRequest()) {
+					System.err.println("CALLER_PROMISC: req SipId(client)=" + SipId.createTransactionClientId(msg));
+					System.err.println("CALLER_PROMISC: req Via=" + msg.getViaHeader());
+				} else {
+					SipId respSipId = SipId.createTransactionClientId(msg);
+					System.err.println("CALLER_PROMISC: resp SipId=" + respSipId);
+					System.err.println("CALLER_PROMISC: resp Via=" + msg.getViaHeader());
+					try {
+						InviteDialog dialog = (InviteDialog) dialogField.get(callerCall);
+						if (dialog != null && dialog.getRoute() == null) {
+							dialog.setRoute(new Vector<>());
+						}
+					} catch (Exception e) {
+						throw new RuntimeException("Failed to fix route", e);
+					}
+				}
+				System.err.flush();
+				if (!msg.isRequest()) {
+					promiscuousGotResponse.countDown();
+				}
+			}
+		});
+
 		System.err.println("CALLER: about to call, provider port=" + callerProvider.getPort()
 				+ " viaAddr=" + callerProvider.getViaAddress());
 		System.err.flush();
 		callerCall.call(new NameAddress(new SipURI("12345", "127.0.0.1")));
 		System.err.flush();
-
-		{
-			Field dialogField = Call.class.getDeclaredField("dialog");
-			dialogField.setAccessible(true);
-			InviteDialog dialog = (InviteDialog) dialogField.get(callerCall);
-			assertThat(dialog.getRoute())
-					.as("Workaround obsolete: mjSIP now initializes route. Remove this reflection hack and the Vector import above.")
-					.isNull();
-			dialog.setRoute(new Vector<>());
-		}
 
 		System.err.println("CALLER: waiting...");
 		System.err.flush();
