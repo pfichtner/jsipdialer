@@ -183,8 +183,8 @@ class SipClientMainIT {
 		System.err.flush();
 
 		// Ensure route is non-null before hangup creates the BYE request
-		{
-			InviteDialog dialog = (InviteDialog) dialogField.get(callerCall);
+		for (Call call : new Call[] { callerCall, recvCall }) {
+			InviteDialog dialog = (InviteDialog) dialogField.get(call);
 			if (dialog.getRoute() == null) {
 				dialog.setRoute(new Vector<>());
 			}
