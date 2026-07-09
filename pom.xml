@@ -19,6 +19,12 @@
 			<id>github</id>
 			<name>GitHub haumacher mjSIP Packages</name>
 			<url>https://maven.pkg.github.com/haumacher/mjSIP</url>
+			<releases>
+				<enabled>true</enabled>
+			</releases>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
 		</repository>
 	</repositories>
 
