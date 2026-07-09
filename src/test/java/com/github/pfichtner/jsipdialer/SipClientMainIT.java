@@ -182,6 +182,13 @@ class SipClientMainIT {
 		System.err.println("CALLER: ok=" + ok + " status=" + status.get());
 		System.err.flush();
 
+		// Ensure route is non-null before hangup creates the BYE request
+		{
+			InviteDialog dialog = (InviteDialog) dialogField.get(callerCall);
+			if (dialog.getRoute() == null) {
+				dialog.setRoute(new Vector<>());
+			}
+		}
 		callerCall.hangup();
 		recvCall.hangup();
 		callerProvider.halt();
