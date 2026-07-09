@@ -2,6 +2,8 @@ package com.github.pfichtner.jsipdialer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.lang.reflect.Field;
+import java.util.Vector;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -13,6 +15,7 @@ import org.mjsip.sip.address.NameAddress;
 import org.mjsip.sip.address.SipURI;
 import org.mjsip.sip.call.Call;
 import org.mjsip.sip.call.CallListenerAdapter;
+import org.mjsip.sip.dialog.InviteDialog;
 import org.mjsip.sip.call.ExtendedCall;
 import org.mjsip.sip.call.SipUser;
 import org.mjsip.sip.provider.SipId;
@@ -154,6 +157,16 @@ class SipClientMainIT {
 		System.err.flush();
 		callerCall.call(new NameAddress(new SipURI("12345", "127.0.0.1")));
 		System.err.flush();
+
+		{
+			Field dialogField = Call.class.getDeclaredField("dialog");
+			dialogField.setAccessible(true);
+			InviteDialog dialog = (InviteDialog) dialogField.get(callerCall);
+			assertThat(dialog.getRoute())
+					.as("Workaround obsolete: mjSIP now initializes route. Remove this reflection hack and the Vector import above.")
+					.isNull();
+			dialog.setRoute(new Vector<>());
+		}
 
 		System.err.println("CALLER: waiting...");
 		System.err.flush();
