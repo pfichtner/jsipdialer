@@ -3,10 +3,15 @@ package com.github.pfichtner.jsipdialer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.nio.file.Path;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mjsip.sdp.SdpMessage;
@@ -37,6 +42,14 @@ class SipRegistrarIT {
 	private static final int KAMAILIO_PORT = 15060;
 	private static final String REGISTRAR_HOST = "127.0.0.1";
 
+	private final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+	@AfterEach
+	void shutdownExecutor() throws InterruptedException {
+		executor.shutdownNow();
+		executor.awaitTermination(5, TimeUnit.SECONDS);
+	}
+
 	@Container
 	static GenericContainer<?> kamailio = new GenericContainer<>(
 			new ImageFromDockerfile("kamailio-test")
@@ -47,8 +60,8 @@ class SipRegistrarIT {
 
 	@Test
 	void callThroughRegistrar() throws Exception {
-		int calleePort = 15570;
-		int callerPort = 15572;
+		int calleePort = freePort();
+		int callerPort = freePort();
 
 		RegisteredCallee callee = registerCallee(calleePort, "callee", call -> {
 			System.err.println("CALLEE: received INVITE, accepting");
@@ -66,17 +79,17 @@ class SipRegistrarIT {
 
 	@Test
 	void acceptedThenRemoteBye() throws Exception {
-		int calleePort = 15571;
-		int callerPort = 15573;
+		int calleePort = freePort();
+		int callerPort = freePort();
 
 		RegisteredCallee callee = registerCallee(calleePort, "callee7", call -> {
 			System.err.println("CALLEE7: received INVITE, accepting then BYE");
 			System.err.flush();
 			call.accept(call.getLocalSessionDescriptor());
-			new Thread(() -> {
+			executor.submit(() -> {
 				try { Thread.sleep(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
 				call.hangup();
-			}).start();
+			});
 		});
 		callee.awaitRegistration();
 
@@ -88,8 +101,8 @@ class SipRegistrarIT {
 
 	@Test
 	void acceptedThenTimeoutHangup() throws Exception {
-		int calleePort = 15574;
-		int callerPort = 15576;
+		int calleePort = freePort();
+		int callerPort = freePort();
 
 		RegisteredCallee callee = registerCallee(calleePort, "callee8", call -> {
 			System.err.println("CALLEE8: received INVITE, accepting (caller will timeout)");
@@ -107,8 +120,8 @@ class SipRegistrarIT {
 
 	@Test
 	void calleeRefuses() throws Exception {
-		int calleePort = 15577;
-		int callerPort = 15579;
+		int calleePort = freePort();
+		int callerPort = freePort();
 
 		RegisteredCallee callee = registerCallee(calleePort, "callee9", call -> {
 			System.err.println("CALLEE9: received INVITE, refusing");
@@ -125,7 +138,7 @@ class SipRegistrarIT {
 
 	@Test
 	void noRouteReturnsNotFound() throws Exception {
-		int callerPort = 15581;
+		int callerPort = freePort();
 
 		CallService callService = createCaller(callerPort, "unregistered", 5);
 		assertThat(callService.call()).isFalse();
@@ -134,8 +147,8 @@ class SipRegistrarIT {
 
 	@Test
 	void timeoutNoAnswer() throws Exception {
-		int calleePort = 15583;
-		int callerPort = 15585;
+		int calleePort = freePort();
+		int callerPort = freePort();
 
 		RegisteredCallee callee = registerCallee(calleePort, "callee11", call -> {
 			System.err.println("CALLEE11: received INVITE, ignoring");
@@ -147,6 +160,12 @@ class SipRegistrarIT {
 		assertThat(callService.call()).isFalse();
 
 		callee.halt();
+	}
+
+	private static int freePort() throws IOException {
+		try (ServerSocket s = new ServerSocket(0)) {
+			return s.getLocalPort();
+		}
 	}
 
 	private RegisteredCallee registerCallee(int port, String user, CalleeAction action) {
