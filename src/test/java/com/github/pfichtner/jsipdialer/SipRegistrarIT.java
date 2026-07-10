@@ -34,9 +34,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 class SipRegistrarIT {
 
-	private static final int CALLEE_PORT = 15570;
-	private static final int CALLER_PORT = 15572;
 	private static final int KAMAILIO_PORT = 15060;
+	private static final String REGISTRAR_HOST = "127.0.0.1";
 
 	@Container
 	static GenericContainer<?> kamailio = new GenericContainer<>(
@@ -48,60 +47,177 @@ class SipRegistrarIT {
 
 	@Test
 	void callThroughRegistrar() throws Exception {
-		String registrarHost = "127.0.0.1";
-		int registrarPort = KAMAILIO_PORT;
+		int calleePort = 15570;
+		int callerPort = 15572;
 
+		RegisteredCallee callee = registerCallee(calleePort, "callee", call -> {
+			System.err.println("CALLEE: received INVITE, accepting");
+			System.err.flush();
+			call.accept(call.getLocalSessionDescriptor());
+		});
+		callee.awaitRegistration();
+
+		CallService callService = createCaller(callerPort, "callee", 10);
+		assertThat(callService.call()).isTrue();
+
+		callee.hangup();
+		callee.halt();
+	}
+
+	@Test
+	void acceptedThenRemoteBye() throws Exception {
+		int calleePort = 15571;
+		int callerPort = 15573;
+
+		RegisteredCallee callee = registerCallee(calleePort, "callee7", call -> {
+			System.err.println("CALLEE7: received INVITE, accepting then BYE");
+			System.err.flush();
+			call.accept(call.getLocalSessionDescriptor());
+			new Thread(() -> {
+				try { Thread.sleep(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+				call.hangup();
+			}).start();
+		});
+		callee.awaitRegistration();
+
+		CallService callService = createCaller(callerPort, "callee7", 10);
+		assertThat(callService.call()).isTrue();
+
+		callee.halt();
+	}
+
+	@Test
+	void acceptedThenTimeoutHangup() throws Exception {
+		int calleePort = 15574;
+		int callerPort = 15576;
+
+		RegisteredCallee callee = registerCallee(calleePort, "callee8", call -> {
+			System.err.println("CALLEE8: received INVITE, accepting (caller will timeout)");
+			System.err.flush();
+			call.accept(call.getLocalSessionDescriptor());
+		});
+		callee.awaitRegistration();
+
+		CallService callService = createCaller(callerPort, "callee8", 3);
+		assertThat(callService.call()).isTrue();
+
+		callee.hangup();
+		callee.halt();
+	}
+
+	@Test
+	void calleeRefuses() throws Exception {
+		int calleePort = 15577;
+		int callerPort = 15579;
+
+		RegisteredCallee callee = registerCallee(calleePort, "callee9", call -> {
+			System.err.println("CALLEE9: received INVITE, refusing");
+			System.err.flush();
+			call.refuse();
+		});
+		callee.awaitRegistration();
+
+		CallService callService = createCaller(callerPort, "callee9", 10);
+		assertThat(callService.call()).isFalse();
+
+		callee.halt();
+	}
+
+	@Test
+	void noRouteReturnsNotFound() throws Exception {
+		int callerPort = 15581;
+
+		CallService callService = createCaller(callerPort, "unregistered", 5);
+		assertThat(callService.call()).isFalse();
+		assertThat(callService.getReason()).contains("Not Found");
+	}
+
+	@Test
+	void timeoutNoAnswer() throws Exception {
+		int calleePort = 15583;
+		int callerPort = 15585;
+
+		RegisteredCallee callee = registerCallee(calleePort, "callee11", call -> {
+			System.err.println("CALLEE11: received INVITE, ignoring");
+			System.err.flush();
+		});
+		callee.awaitRegistration();
+
+		CallService callService = createCaller(callerPort, "callee11", 3);
+		assertThat(callService.call()).isFalse();
+
+		callee.halt();
+	}
+
+	private RegisteredCallee registerCallee(int port, String user, CalleeAction action) {
 		SchedulerConfig schedConfig = new SchedulerConfig();
+		SipConfig config = new SipConfig();
+		config.setTransportProtocols(new String[] { "udp" });
+		config.setHostPort(port);
+		config.setViaAddrIPv4("127.0.0.1");
+		config.setTransactionTimeout(5000);
+		config.setForceRport(true);
+		config.normalize();
 
-		// --- Callee: register with Kamailio, then listen for INVITEs ---
-		SipConfig calleeConfig = new SipConfig();
-		calleeConfig.setTransportProtocols(new String[] { "udp" });
-		calleeConfig.setHostPort(CALLEE_PORT);
-		calleeConfig.setViaAddrIPv4("127.0.0.1");
-		calleeConfig.setTransactionTimeout(5000);
-		calleeConfig.setForceRport(true);
-		calleeConfig.normalize();
-
-		SipProvider calleeProvider = new SipProvider(calleeConfig, new ConfiguredScheduler(schedConfig));
+		SipProvider provider = new SipProvider(config, new ConfiguredScheduler(schedConfig));
 
 		AtomicBoolean registered = new AtomicBoolean();
-		sendRegister(calleeProvider, registrarHost, registrarPort, "callee", "127.0.0.1", CALLEE_PORT, registered);
-		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
+		sendRegister(provider, REGISTRAR_HOST, KAMAILIO_PORT, user, "127.0.0.1", port, registered);
 
-		SdpMessage calleeSdp = SdpMessage.createSdpMessage("callee", "0.0.0.0");
-		ExtendedCall calleeCall = new ExtendedCall(calleeProvider,
+		SdpMessage calleeSdp = SdpMessage.createSdpMessage(user, "0.0.0.0");
+		ExtendedCall calleeCall = new ExtendedCall(provider,
 				new SipUser(
-						new NameAddress(new SipURI("callee", "127.0.0.1")),
-						new NameAddress(new SipURI("callee", "127.0.0.1", CALLEE_PORT))),
+						new NameAddress(new SipURI(user, "127.0.0.1")),
+						new NameAddress(new SipURI(user, "127.0.0.1", port))),
 				new CallListenerAdapter() {
 					@Override
 					public void onCallInvite(Call call, NameAddress callee, NameAddress caller,
 							SdpMessage sdp, SipMessage invite) {
-						System.err.println("CALLEE: received INVITE from " + caller);
-						System.err.flush();
-						call.accept(call.getLocalSessionDescriptor());
-						System.err.println("CALLEE: accepted");
-						System.err.flush();
+						action.onInvite(call);
 					}
 				});
 		calleeCall.setLocalSessionDescriptor(calleeSdp);
 		calleeCall.listen();
 
-		// --- Caller: call through Kamailio using CallService ---
-		CallService callService = new CallService(
-				registrarHost, registrarPort,
+		return new RegisteredCallee(registered, calleeCall, provider);
+	}
+
+	private CallService createCaller(int port, String destination, int timeoutSeconds) {
+		return new CallService(
+				REGISTRAR_HOST, KAMAILIO_PORT,
 				"caller", "pass",
-				"callee", null,
-				10, "udp",
-				CALLER_PORT);
+				destination, null,
+				timeoutSeconds, "udp",
+				port);
+	}
 
-		boolean success = callService.call();
+	@FunctionalInterface
+	interface CalleeAction {
+		void onInvite(Call call);
+	}
 
-		assertThat(success).isTrue();
+	private static class RegisteredCallee {
+		private final AtomicBoolean registered;
+		private final ExtendedCall call;
+		private final SipProvider provider;
 
-		// --- Cleanup ---
-		calleeCall.hangup();
-		calleeProvider.halt();
+		RegisteredCallee(AtomicBoolean registered, ExtendedCall call, SipProvider provider) {
+			this.registered = registered;
+			this.call = call;
+			this.provider = provider;
+		}
+
+		void awaitRegistration() {
+			await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
+		}
+
+		void hangup() {
+			call.hangup();
+		}
+
+		void halt() {
+			provider.halt();
+		}
 	}
 
 	private void sendRegister(SipProvider provider, String registrarHost, int registrarPort,
@@ -121,14 +237,14 @@ class SipRegistrarIT {
 			public void onReceivedMessage(SipProvider p, SipMessage msg) {
 				if (msg.isResponse() && msg.getStatusLine() != null
 						&& msg.getStatusLine().getCode() == 200) {
-					System.err.println("REGISTER: 200 OK received");
+					System.err.println("REGISTER: 200 OK received for " + user);
 					System.err.flush();
 					registered.set(true);
 				}
 			}
 		});
 
-		System.err.println("REGISTER: sending to " + registrarHost + ":" + registrarPort);
+		System.err.println("REGISTER: sending " + user + " to " + registrarHost + ":" + registrarPort);
 		System.err.flush();
 		provider.sendMessage(register);
 	}
