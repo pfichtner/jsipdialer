@@ -1,10 +1,11 @@
 package com.github.pfichtner.jsipdialer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import java.nio.file.Path;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -63,9 +64,9 @@ class SipRegistrarIT {
 
 		SipProvider calleeProvider = new SipProvider(calleeConfig, new ConfiguredScheduler(schedConfig));
 
-		CountDownLatch registered = new CountDownLatch(1);
+		AtomicBoolean registered = new AtomicBoolean();
 		sendRegister(calleeProvider, registrarHost, registrarPort, "callee", "127.0.0.1", CALLEE_PORT, registered);
-		assertThat(registered.await(5, TimeUnit.SECONDS)).as("Callee registration succeeded").isTrue();
+		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
 
 		SdpMessage calleeSdp = SdpMessage.createSdpMessage("callee", "0.0.0.0");
 		ExtendedCall calleeCall = new ExtendedCall(calleeProvider,
@@ -104,7 +105,7 @@ class SipRegistrarIT {
 	}
 
 	private void sendRegister(SipProvider provider, String registrarHost, int registrarPort,
-			String user, String host, int contactPort, CountDownLatch latch) {
+			String user, String host, int contactPort, AtomicBoolean registered) {
 
 		GenericURI requestUri = new SipURI(registrarHost, registrarPort);
 		NameAddress from = new NameAddress(new SipURI(user, host));
@@ -122,7 +123,7 @@ class SipRegistrarIT {
 						&& msg.getStatusLine().getCode() == 200) {
 					System.err.println("REGISTER: 200 OK received");
 					System.err.flush();
-					latch.countDown();
+					registered.set(true);
 				}
 			}
 		});
