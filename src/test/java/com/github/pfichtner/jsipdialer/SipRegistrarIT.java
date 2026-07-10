@@ -40,13 +40,15 @@ class SipRegistrarIT {
 	@Container
 	static GenericContainer<?> kamailio = new GenericContainer<>(
 			new ImageFromDockerfile("kamailio-test")
-					.withDockerfile(Path.of("docker/Dockerfile").toAbsolutePath()))
+					.withDockerfile(Path.of("docker/Dockerfile").toAbsolutePath())
+					.withBuildArg("CACHEBUST", Long.toString(System.nanoTime())))
 			.withNetworkMode("host")
 			.waitingFor(Wait.forLogMessage(".*Listening on.*", 1));
 
 	@Test
 	void callThroughRegistrar() throws Exception {
 		String registrarHost = "127.0.0.1";
+		int registrarPort = KAMAILIO_PORT;
 
 		SchedulerConfig schedConfig = new SchedulerConfig();
 
@@ -62,7 +64,7 @@ class SipRegistrarIT {
 		SipProvider calleeProvider = new SipProvider(calleeConfig, new ConfiguredScheduler(schedConfig));
 
 		CountDownLatch registered = new CountDownLatch(1);
-		sendRegister(calleeProvider, registrarHost, KAMAILIO_PORT, "callee", "127.0.0.1", CALLEE_PORT, registered);
+		sendRegister(calleeProvider, registrarHost, registrarPort, "callee", "127.0.0.1", CALLEE_PORT, registered);
 		assertThat(registered.await(5, TimeUnit.SECONDS)).as("Callee registration succeeded").isTrue();
 
 		SdpMessage calleeSdp = SdpMessage.createSdpMessage("callee", "0.0.0.0");
@@ -86,7 +88,7 @@ class SipRegistrarIT {
 
 		// --- Caller: call through Kamailio using CallService ---
 		CallService callService = new CallService(
-				registrarHost, KAMAILIO_PORT,
+				registrarHost, registrarPort,
 				"caller", "pass",
 				"callee", null,
 				10, "udp",
