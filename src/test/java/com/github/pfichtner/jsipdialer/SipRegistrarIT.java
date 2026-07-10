@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mjsip.sdp.SdpMessage;
 import org.mjsip.sip.address.GenericURI;
 import org.mjsip.sip.address.NameAddress;
@@ -37,6 +38,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Tag("integration")
 @Testcontainers
+@ExtendWith(KamailioLogDumperExtension.class)
 class SipRegistrarIT {
 
 	private static final int KAMAILIO_PORT = 15060;
@@ -48,16 +50,6 @@ class SipRegistrarIT {
 	void shutdownExecutor() throws InterruptedException {
 		executor.shutdownNow();
 		executor.awaitTermination(5, TimeUnit.SECONDS);
-	}
-
-	private void dumpKamailioLogs() {
-		String logs = kamailio.getLogs();
-		if (!logs.isEmpty()) {
-			System.err.println("=== KAMAILIO CONTAINER LOGS ===");
-			System.err.println(logs);
-			System.err.println("=== END KAMAILIO LOGS ===");
-			System.err.flush();
-		}
 	}
 
 	@Container
@@ -81,12 +73,7 @@ class SipRegistrarIT {
 		callee.awaitRegistration();
 
 		CallService callService = createCaller(callerPort, "callee", 10);
-		try {
-			assertThat(callService.call()).isTrue();
-		} catch (AssertionError e) {
-			dumpKamailioLogs();
-			throw e;
-		}
+		assertThat(callService.call()).isTrue();
 
 		callee.hangup();
 		callee.halt();
@@ -109,12 +96,7 @@ class SipRegistrarIT {
 		callee.awaitRegistration();
 
 		CallService callService = createCaller(callerPort, "callee7", 10);
-		try {
-			assertThat(callService.call()).isTrue();
-		} catch (AssertionError e) {
-			dumpKamailioLogs();
-			throw e;
-		}
+		assertThat(callService.call()).isTrue();
 
 		callee.halt();
 	}
@@ -132,12 +114,7 @@ class SipRegistrarIT {
 		callee.awaitRegistration();
 
 		CallService callService = createCaller(callerPort, "callee8", 3);
-		try {
-			assertThat(callService.call()).isTrue();
-		} catch (AssertionError e) {
-			dumpKamailioLogs();
-			throw e;
-		}
+		assertThat(callService.call()).isTrue();
 
 		callee.hangup();
 		callee.halt();
