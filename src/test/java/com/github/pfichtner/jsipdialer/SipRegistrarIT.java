@@ -50,6 +50,16 @@ class SipRegistrarIT {
 		executor.awaitTermination(5, TimeUnit.SECONDS);
 	}
 
+	private void dumpKamailioLogs() {
+		String logs = kamailio.getLogs();
+		if (!logs.isEmpty()) {
+			System.err.println("=== KAMAILIO CONTAINER LOGS ===");
+			System.err.println(logs);
+			System.err.println("=== END KAMAILIO LOGS ===");
+			System.err.flush();
+		}
+	}
+
 	@Container
 	static GenericContainer<?> kamailio = new GenericContainer<>(
 			new ImageFromDockerfile("kamailio-test")
@@ -71,7 +81,12 @@ class SipRegistrarIT {
 		callee.awaitRegistration();
 
 		CallService callService = createCaller(callerPort, "callee", 10);
-		assertThat(callService.call()).isTrue();
+		try {
+			assertThat(callService.call()).isTrue();
+		} catch (AssertionError e) {
+			dumpKamailioLogs();
+			throw e;
+		}
 
 		callee.hangup();
 		callee.halt();
@@ -94,7 +109,12 @@ class SipRegistrarIT {
 		callee.awaitRegistration();
 
 		CallService callService = createCaller(callerPort, "callee7", 10);
-		assertThat(callService.call()).isTrue();
+		try {
+			assertThat(callService.call()).isTrue();
+		} catch (AssertionError e) {
+			dumpKamailioLogs();
+			throw e;
+		}
 
 		callee.halt();
 	}
@@ -112,7 +132,12 @@ class SipRegistrarIT {
 		callee.awaitRegistration();
 
 		CallService callService = createCaller(callerPort, "callee8", 3);
-		assertThat(callService.call()).isTrue();
+		try {
+			assertThat(callService.call()).isTrue();
+		} catch (AssertionError e) {
+			dumpKamailioLogs();
+			throw e;
+		}
 
 		callee.hangup();
 		callee.halt();
@@ -164,6 +189,7 @@ class SipRegistrarIT {
 
 	private static int freePort() throws IOException {
 		try (ServerSocket s = new ServerSocket(0)) {
+			s.setReuseAddress(true);
 			return s.getLocalPort();
 		}
 	}
