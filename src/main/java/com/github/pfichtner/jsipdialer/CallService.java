@@ -29,12 +29,19 @@ public class CallService {
 	private final String callerName;
 	private final int timeoutSeconds;
 	private final String transport;
+	private final int localPort;
 
 	private volatile boolean success;
 	private volatile String reason;
 
 	public CallService(String serverAddress, int serverPort, String username, String password,
 			String destinationNumber, String callerName, int timeoutSeconds, String transport) {
+		this(serverAddress, serverPort, username, password, destinationNumber, callerName, timeoutSeconds, transport,
+				15062);
+	}
+
+	public CallService(String serverAddress, int serverPort, String username, String password,
+			String destinationNumber, String callerName, int timeoutSeconds, String transport, int localPort) {
 		this.serverAddress = serverAddress;
 		this.serverPort = serverPort;
 		this.username = username;
@@ -43,13 +50,14 @@ public class CallService {
 		this.callerName = callerName;
 		this.timeoutSeconds = timeoutSeconds;
 		this.transport = transport;
+		this.localPort = localPort;
 	}
 
 	public boolean call() throws Exception {
 		SipConfig sipConfig = new SipConfig();
 		sipConfig.setTransportProtocols(new String[] { transport });
 		sipConfig.setOutboundProxy(new SipURI(serverAddress, serverPort));
-		sipConfig.setHostPort(15062);
+		sipConfig.setHostPort(localPort);
 		sipConfig.setViaAddrIPv4("127.0.0.1");
 		sipConfig.normalize();
 
