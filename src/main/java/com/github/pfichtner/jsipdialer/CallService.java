@@ -134,7 +134,8 @@ public class CallService {
 
 		call.call(callee, caller, sdpOffer);
 
-		latch.await(5, TimeUnit.MINUTES);
+		long awaitSeconds = timeoutSeconds > 0 ? timeoutSeconds + 5 : 300;
+		latch.await(awaitSeconds, TimeUnit.SECONDS);
 
 		Thread.sleep(500);
 		sipProvider.halt();
