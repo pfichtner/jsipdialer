@@ -34,7 +34,7 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ matrix.os }}" == 'linux' ]]; then
-            sudo apt-get update && sudo apt-get install -y upx musl-tools zlib1g-dev
+            sudo apt-get update && sudo apt-get install -y upx musl-tools build-essential zlib1g-dev
           elif [[ "${{ matrix.os }}" == 'darwin' ]]; then
             brew install upx
           elif [[ "${{ matrix.os }}" == 'windows' ]]; then
@@ -42,6 +42,8 @@ jobs:
           fi
       - name: Build with Maven
         run: ./mvnw verify
+      - name: List target directory
+        run: ls -la target/
       - name: Compress and move files
         run: |
           mkdir -p publish-artifacts
