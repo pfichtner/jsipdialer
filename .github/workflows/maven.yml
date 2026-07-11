@@ -52,8 +52,7 @@ jobs:
           else
             tarname="${{ matrix.os }}"
           fi
-          (cd target && tar -tzf "../publish-artifacts/jsipdialer_${tarname}.tar.gz" 2>/dev/null || true)
-          tar -czf "publish-artifacts/jsipdialer_${tarname}.tar.gz" -C target jsipdialer jsipdialer-*.jar
+          (cd target && tar -czf "../publish-artifacts/jsipdialer_${tarname}.tar.gz" jsipdialer jsipdialer-*.jar)
           tar -tzf "publish-artifacts/jsipdialer_${tarname}.tar.gz"
       - name: Upload Artifacts
         uses: actions/upload-artifact@v7
