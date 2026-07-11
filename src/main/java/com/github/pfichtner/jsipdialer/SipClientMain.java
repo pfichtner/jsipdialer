@@ -32,9 +32,7 @@ public class SipClientMain {
 
 	public static void main(String... args) throws Exception {
 		var exitCode = new SipClientMain().doMain(args);
-		if (exitCode != 0) {
-			System.exit(exitCode);
-		}
+		System.exit(exitCode);
 	}
 
 	public int doMain(String[] args) throws Exception {
