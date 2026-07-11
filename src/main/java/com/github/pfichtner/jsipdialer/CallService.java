@@ -118,7 +118,7 @@ public class CallService {
 		SipUser sipUser = new SipUser(new NameAddress(new SipURI(username, serverAddress)), username, serverAddress,
 				password);
 
-		ExtendedCall call = new ExtendedCall(sipProvider, sipUser, listener);
+		CallExt call = new CallExt(sipProvider, sipUser, listener);
 
 		if (timeoutSeconds > 0) {
 			sipProvider.scheduler().schedule(timeoutSeconds * 1000L, () -> {
@@ -157,11 +157,9 @@ public class CallService {
 		return reason;
 	}
 
-	private static void cancelCall(Call call, SipProvider sipProvider) {
+	private static void cancelCall(CallExt call, SipProvider sipProvider) {
 		try {
-			Field dialogField = Call.class.getDeclaredField("dialog");
-			dialogField.setAccessible(true);
-			InviteDialog dialog = (InviteDialog) dialogField.get(call);
+			InviteDialog dialog = call.getDialog();
 			if (dialog != null) {
 				Field inviteReqField = InviteDialog.class.getDeclaredField("invite_req");
 				inviteReqField.setAccessible(true);
@@ -174,5 +172,15 @@ public class CallService {
 		} catch (Exception ignored) {
 		}
 		call.hangup();
+	}
+
+	private static class CallExt extends ExtendedCall {
+		CallExt(SipProvider sipProvider, SipUser user, CallListenerAdapter listener) {
+			super(sipProvider, user, listener);
+		}
+
+		InviteDialog getDialog() {
+			return dialog;
+		}
 	}
 }
