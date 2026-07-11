@@ -9,7 +9,7 @@ The call should be initialized using a soft phone (SIP). https://github.com/tmak
 
 ```SIP_USERNAME='theSipUser' SIP_PASSWORD='theSipUsersPassword' ./jsipdialer -sipServerAddress 'sipservername.local' -destinationNumber '**9' -callerName 'The caller's name to display' -timeout 20```
 
-Calls the numnber ```**9``` ("Sammelrufnummer" on Fritz!Boxes [TM]) for at most 20 seconds. 
+Calls the number ```**9``` ("Sammelrufnummer" on Fritz!Boxes [TM]) for at most 20 seconds. 
 USERNAME and PASSWORD are passed via environment variables for security reasons (you should not pass confidential information via command line arguments)
 ```callerName``` and ```timeout``` are optional. 
 
