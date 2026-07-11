@@ -90,6 +90,79 @@ class SipClientMainNativeIT {
 		callee.halt();
 	}
 
+	@Test
+	void calleeRefuses() throws Exception {
+		if (!Files.isExecutable(NATIVE_BINARY)) {
+			System.err.println("Skipping native binary test: " + NATIVE_BINARY + " not found or not executable");
+			return;
+		}
+
+		int calleePort = freePort();
+
+		AtomicBoolean registered = new AtomicBoolean();
+		RegisteredCallee callee = registerCallee(calleePort, "natcalleerefuse", registered, call -> {
+			System.err.println("NATCALLEEREFUSE: received INVITE, refusing");
+			System.err.flush();
+			call.refuse();
+		});
+		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
+
+		ProcessBuilder pb = new ProcessBuilder(
+				NATIVE_BINARY.toAbsolutePath().toString(),
+				"-sipServerAddress", REGISTRAR_HOST,
+				"-sipServerPort", String.valueOf(KAMAILIO_PORT),
+				"-sipUsername", "natcaller",
+				"-sipPassword", "pass",
+				"-destinationNumber", "natcalleerefuse",
+				"-timeout", "10");
+		pb.redirectErrorStream(true);
+
+		Process process = pb.start();
+		String output = new String(process.getInputStream().readAllBytes());
+		boolean exited = process.waitFor(30, TimeUnit.SECONDS);
+
+		assertThat(exited).as("Process should exit within timeout").isTrue();
+		assertThat(process.exitValue()).as("Exit code should be 1 (call refused)%n%s", output).isEqualTo(1);
+
+		callee.halt();
+	}
+
+	@Test
+	void timeoutNoAnswer() throws Exception {
+		if (!Files.isExecutable(NATIVE_BINARY)) {
+			System.err.println("Skipping native binary test: " + NATIVE_BINARY + " not found or not executable");
+			return;
+		}
+
+		int calleePort = freePort();
+
+		AtomicBoolean registered = new AtomicBoolean();
+		RegisteredCallee callee = registerCallee(calleePort, "natcalleetimeout", registered, call -> {
+			System.err.println("NATCALLEETIMEOUT: received INVITE, ignoring");
+			System.err.flush();
+		});
+		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
+
+		ProcessBuilder pb = new ProcessBuilder(
+				NATIVE_BINARY.toAbsolutePath().toString(),
+				"-sipServerAddress", REGISTRAR_HOST,
+				"-sipServerPort", String.valueOf(KAMAILIO_PORT),
+				"-sipUsername", "natcaller",
+				"-sipPassword", "pass",
+				"-destinationNumber", "natcalleetimeout",
+				"-timeout", "3");
+		pb.redirectErrorStream(true);
+
+		Process process = pb.start();
+		String output = new String(process.getInputStream().readAllBytes());
+		boolean exited = process.waitFor(30, TimeUnit.SECONDS);
+
+		assertThat(exited).as("Process should exit within timeout").isTrue();
+		assertThat(process.exitValue()).as("Exit code should be 1 (timeout, no answer)%n%s", output).isEqualTo(1);
+
+		callee.halt();
+	}
+
 	private static int freePort() throws IOException {
 		try (ServerSocket s = new ServerSocket(0)) {
 			s.setReuseAddress(true);
