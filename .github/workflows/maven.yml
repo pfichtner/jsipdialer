@@ -8,6 +8,8 @@ permissions:
 jobs:
   build:
     name: jsipdialer on ${{ matrix.os }}
+    env:
+      MAVEN_PKG_TOKEN: ${{ secrets.MAVEN_PKG_TOKEN }}
     runs-on: ${{ matrix.os == 'darwin' && 'macos-latest' || matrix.os == 'linux' && 'ubuntu-latest' || matrix.os == 'windows' && 'windows-latest' }}
     strategy:
       matrix:
@@ -19,14 +21,15 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: 'maven'
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: MAVEN_PKG_TOKEN
       - uses: graalvm/setup-graalvm@v1
         with:
           java-version: '17'
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           native-image-job-reports: 'true'
-      - name: Build with Maven
-        run: ./mvnw verify
       - name: Install UPX
         shell: bash
         run: |
@@ -37,12 +40,8 @@ jobs:
           elif [[ "${{ matrix.os }}" == 'windows' ]]; then
             choco install upx -y
           fi
-      - name: Pack/compress binary
-        run: |
-           find target/ -type f -executable -exec upx {} +
-      - name: Call the binary for test
-        run: |
-           target/jsipdialer -h || true
+      - name: Build with Maven
+        run: ./mvnw verify
       - name: Compress and move files
         run: |
           mkdir -p publish-artifacts

@@ -1,0 +1,273 @@
+package com.github.pfichtner.jsipdialer;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
+
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.nio.file.Path;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mjsip.sdp.SdpMessage;
+import org.mjsip.sip.address.GenericURI;
+import org.mjsip.sip.address.NameAddress;
+import org.mjsip.sip.address.SipURI;
+import org.mjsip.sip.call.Call;
+import org.mjsip.sip.call.CallListenerAdapter;
+import org.mjsip.sip.call.ExtendedCall;
+import org.mjsip.sip.call.SipUser;
+import org.mjsip.sip.header.ExpiresHeader;
+import org.mjsip.sip.message.SipMessage;
+import org.mjsip.sip.provider.SipConfig;
+import org.mjsip.sip.provider.SipProvider;
+import org.mjsip.sip.provider.SipProviderListener;
+import org.mjsip.time.ConfiguredScheduler;
+import org.mjsip.time.SchedulerConfig;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.images.builder.ImageFromDockerfile;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+@Tag("integration")
+@Testcontainers
+@ExtendWith(KamailioLogDumperExtension.class)
+class SipRegistrarIT {
+
+	private static final int KAMAILIO_PORT = 15060;
+	private static final String REGISTRAR_HOST = "127.0.0.1";
+
+	private final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+	@AfterEach
+	void shutdownExecutor() throws InterruptedException {
+		executor.shutdownNow();
+		executor.awaitTermination(5, TimeUnit.SECONDS);
+	}
+
+	@Container
+	static GenericContainer<?> kamailio = new GenericContainer<>(
+			new ImageFromDockerfile("kamailio-test")
+					.withDockerfile(Path.of("docker/Dockerfile").toAbsolutePath())
+					.withBuildArg("CACHEBUST", Long.toString(System.nanoTime())))
+			.withNetworkMode("host")
+			.waitingFor(Wait.forLogMessage(".*Listening on.*", 1));
+
+	@Test
+	void callThroughRegistrar() throws Exception {
+		int calleePort = freePort();
+		int callerPort = freePort();
+
+		RegisteredCallee callee = registerCallee(calleePort, "callee", call -> {
+			System.err.println("CALLEE: received INVITE, accepting");
+			System.err.flush();
+			call.accept(call.getLocalSessionDescriptor());
+		});
+		callee.awaitRegistration();
+
+		CallService callService = createCaller(callerPort, "callee", 10);
+		assertThat(callService.call()).isTrue();
+
+		callee.hangup();
+		callee.halt();
+	}
+
+	@Test
+	void acceptedThenRemoteBye() throws Exception {
+		int calleePort = freePort();
+		int callerPort = freePort();
+
+		RegisteredCallee callee = registerCallee(calleePort, "callee7", call -> {
+			System.err.println("CALLEE7: received INVITE, accepting then BYE");
+			System.err.flush();
+			call.accept(call.getLocalSessionDescriptor());
+			executor.submit(() -> {
+				try { Thread.sleep(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+				call.hangup();
+			});
+		});
+		callee.awaitRegistration();
+
+		CallService callService = createCaller(callerPort, "callee7", 10);
+		assertThat(callService.call()).isTrue();
+
+		callee.halt();
+	}
+
+	@Test
+	void acceptedThenTimeoutHangup() throws Exception {
+		int calleePort = freePort();
+		int callerPort = freePort();
+
+		RegisteredCallee callee = registerCallee(calleePort, "callee8", call -> {
+			System.err.println("CALLEE8: received INVITE, accepting (caller will timeout)");
+			System.err.flush();
+			call.accept(call.getLocalSessionDescriptor());
+		});
+		callee.awaitRegistration();
+
+		CallService callService = createCaller(callerPort, "callee8", 3);
+		assertThat(callService.call()).isTrue();
+
+		callee.hangup();
+		callee.halt();
+	}
+
+	@Test
+	void calleeRefuses() throws Exception {
+		int calleePort = freePort();
+		int callerPort = freePort();
+
+		RegisteredCallee callee = registerCallee(calleePort, "callee9", call -> {
+			System.err.println("CALLEE9: received INVITE, refusing");
+			System.err.flush();
+			call.refuse();
+		});
+		callee.awaitRegistration();
+
+		CallService callService = createCaller(callerPort, "callee9", 10);
+		assertThat(callService.call()).isFalse();
+
+		callee.halt();
+	}
+
+	@Test
+	void noRouteReturnsNotFound() throws Exception {
+		int callerPort = freePort();
+
+		CallService callService = createCaller(callerPort, "unregistered", 5);
+		assertThat(callService.call()).isFalse();
+		assertThat(callService.getReason()).contains("Not Found");
+	}
+
+	@Test
+	void timeoutNoAnswer() throws Exception {
+		int calleePort = freePort();
+		int callerPort = freePort();
+
+		RegisteredCallee callee = registerCallee(calleePort, "callee11", call -> {
+			System.err.println("CALLEE11: received INVITE, ignoring");
+			System.err.flush();
+		});
+		callee.awaitRegistration();
+
+		CallService callService = createCaller(callerPort, "callee11", 3);
+		assertThat(callService.call()).isFalse();
+
+		callee.halt();
+	}
+
+	private static int freePort() throws IOException {
+		try (ServerSocket s = new ServerSocket(0)) {
+			s.setReuseAddress(true);
+			return s.getLocalPort();
+		}
+	}
+
+	private RegisteredCallee registerCallee(int port, String user, CalleeAction action) {
+		SchedulerConfig schedConfig = new SchedulerConfig();
+		SipConfig config = new SipConfig();
+		config.setTransportProtocols(new String[] { "udp" });
+		config.setHostPort(port);
+		config.setViaAddrIPv4("127.0.0.1");
+		config.setTransactionTimeout(5000);
+		config.setForceRport(true);
+		config.normalize();
+
+		SipProvider provider = new SipProvider(config, new ConfiguredScheduler(schedConfig));
+
+		AtomicBoolean registered = new AtomicBoolean();
+		sendRegister(provider, REGISTRAR_HOST, KAMAILIO_PORT, user, "127.0.0.1", port, registered);
+
+		SdpMessage calleeSdp = SdpMessage.createSdpMessage(user, "0.0.0.0");
+		ExtendedCall calleeCall = new ExtendedCall(provider,
+				new SipUser(
+						new NameAddress(new SipURI(user, "127.0.0.1")),
+						new NameAddress(new SipURI(user, "127.0.0.1", port))),
+				new CallListenerAdapter() {
+					@Override
+					public void onCallInvite(Call call, NameAddress callee, NameAddress caller,
+							SdpMessage sdp, SipMessage invite) {
+						action.onInvite(call);
+					}
+				});
+		calleeCall.setLocalSessionDescriptor(calleeSdp);
+		calleeCall.listen();
+
+		return new RegisteredCallee(registered, calleeCall, provider);
+	}
+
+	private CallService createCaller(int port, String destination, int timeoutSeconds) {
+		return new CallService(
+				REGISTRAR_HOST, KAMAILIO_PORT,
+				"caller", "pass",
+				destination, null,
+				timeoutSeconds, "udp",
+				port);
+	}
+
+	@FunctionalInterface
+	interface CalleeAction {
+		void onInvite(Call call);
+	}
+
+	private static class RegisteredCallee {
+		private final AtomicBoolean registered;
+		private final ExtendedCall call;
+		private final SipProvider provider;
+
+		RegisteredCallee(AtomicBoolean registered, ExtendedCall call, SipProvider provider) {
+			this.registered = registered;
+			this.call = call;
+			this.provider = provider;
+		}
+
+		void awaitRegistration() {
+			await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
+		}
+
+		void hangup() {
+			call.hangup();
+		}
+
+		void halt() {
+			provider.halt();
+		}
+	}
+
+	private void sendRegister(SipProvider provider, String registrarHost, int registrarPort,
+			String user, String host, int contactPort, AtomicBoolean registered) {
+
+		GenericURI requestUri = new SipURI(registrarHost, registrarPort);
+		NameAddress from = new NameAddress(new SipURI(user, host));
+		NameAddress to = new NameAddress(new SipURI(user, host));
+		NameAddress contact = new NameAddress(new SipURI(user, host, contactPort));
+
+		SipMessage register = provider.messageFactory().createRegisterRequest(
+				requestUri, from, to, contact, null);
+		register.addHeader(new ExpiresHeader(3600), false);
+
+		provider.addPromiscuousListener(new SipProviderListener() {
+			@Override
+			public void onReceivedMessage(SipProvider p, SipMessage msg) {
+				if (msg.isResponse() && msg.getStatusLine() != null
+						&& msg.getStatusLine().getCode() == 200) {
+					System.err.println("REGISTER: 200 OK received for " + user);
+					System.err.flush();
+					registered.set(true);
+				}
+			}
+		});
+
+		System.err.println("REGISTER: sending " + user + " to " + registrarHost + ":" + registrarPort);
+		System.err.flush();
+		provider.sendMessage(register);
+	}
+}

@@ -31,10 +31,13 @@ public class SipClientMain {
 	private static final String SIP_SERVER_PORT = "sipServerPort";
 
 	public static void main(String... args) throws Exception {
-		new SipClientMain().doMain(args);
+		var exitCode = new SipClientMain().doMain(args);
+		if (exitCode != 0) {
+			System.exit(exitCode);
+		}
 	}
 
-	void doMain(String[] args) throws Exception {
+	public int doMain(String[] args) throws Exception {
 		var options = options();
 		var parser = new DefaultParser();
 
@@ -45,34 +48,37 @@ public class SipClientMain {
 							envErrorMessage(USERNAME, ENVVAR_SIP_USERNAME)),
 					requireNonNull(cmdLine.getOptionValue(PASSWORD, env(ENVVAR_SIP_PASSWORD)),
 							envErrorMessage(PASSWORD, ENVVAR_SIP_PASSWORD)));
-			var call = new Call( //
-					cmdLine.getOptionValue(DESTINATION_NUMBER), //
-					cmdLine.getOptionValue(CALLER_NAME), //
-					parseInt(cmdLine.getOptionValue(TIMEOUT, String.valueOf(DEFAULT_TIMEOUT))) //
-			);
-			try (Connection connection = makeConnection(cmdLine.getOptionValue(SIP_SERVER_ADDRESS),
-					parseInt(cmdLine.getOptionValue(SIP_SERVER_PORT, String.valueOf(DEFAULT_SIPPORT))))) {
-				execCall(sipConfig, call, connection);
+			var serverAddress = cmdLine.getOptionValue(SIP_SERVER_ADDRESS);
+			var serverPort = parseInt(cmdLine.getOptionValue(SIP_SERVER_PORT, String.valueOf(DEFAULT_SIPPORT)));
+			var destinationNumber = cmdLine.getOptionValue(DESTINATION_NUMBER);
+			var callerName = cmdLine.getOptionValue(CALLER_NAME);
+			var timeout = parseInt(cmdLine.getOptionValue(TIMEOUT, String.valueOf(DEFAULT_TIMEOUT)));
+
+			var callService = createCallService(serverAddress, serverPort, sipConfig.getUsername(),
+					sipConfig.getPassword(), destinationNumber, callerName, timeout, "udp");
+			if (!callService.call()) {
+				System.err.println("Call failed: " + callService.getReason());
+				return 1;
 			}
+			return 0;
 		} catch (ParseException e) {
 			e.printStackTrace();
 			new HelpFormatter().printHelp(binaryName(), options);
+			return 1;
 		}
 	}
 
+	protected CallService createCallService(String serverAddress, int serverPort, String username,
+			String password, String destinationNumber, String callerName, int timeout, String transport) {
+		return new CallService(serverAddress, serverPort, username, password,
+				destinationNumber, callerName, timeout, transport);
+	}
+
 	private static String binaryName() {
-		Optional<String> binaryName = System.getProperty("org.graalvm.nativeimage.imagecode") == null //
-				? Optional.empty() //
+		Optional<String> binaryName = System.getProperty("org.graalvm.nativeimage.imagecode") == null
+				? Optional.empty()
 				: ProcessHandle.current().info().command().map(c -> c.substring(c.lastIndexOf('/') + 1));
 		return binaryName.orElse(JSIPDIALER);
-	}
-
-	protected Connection makeConnection(String server, int port) throws Exception {
-		return new UdpConnection(server, port);
-	}
-
-	protected void execCall(SipConfig sipConfig, Call call, Connection connection) throws Exception {
-		new CallExecutor(connection, sipConfig).execCall(call);
 	}
 
 	private static String requireNonNull(String value, String errorMessage) throws ParseException {
@@ -83,15 +89,15 @@ public class SipClientMain {
 	}
 
 	private static Options options() {
-		return new Options() //
-				.addRequiredOption(SIP_SERVER_ADDRESS, null, true, "ip/name of the sip server") //
-				.addOption(SIP_SERVER_PORT, null, true, "port number of the sip server") //
+		return new Options()
+				.addRequiredOption(SIP_SERVER_ADDRESS, null, true, "ip/name of the sip server")
+				.addOption(SIP_SERVER_PORT, null, true, "port number of the sip server")
 				.addOption(USERNAME, true,
-						"sip username (should better be passed via env var " + ENVVAR_SIP_USERNAME + ")") //
+						"sip username (should better be passed via env var " + ENVVAR_SIP_USERNAME + ")")
 				.addOption(PASSWORD, true,
-						"sip password (should better be passed via env var " + ENVVAR_SIP_PASSWORD + ")") //
-				.addRequiredOption(DESTINATION_NUMBER, null, true, "the number to call") //
-				.addOption(CALLER_NAME, null, true, "the caller's name that gets displayed") //
+						"sip password (should better be passed via env var " + ENVVAR_SIP_PASSWORD + ")")
+				.addRequiredOption(DESTINATION_NUMBER, null, true, "the number to call")
+				.addOption(CALLER_NAME, null, true, "the caller's name that gets displayed")
 				.addOption(TIMEOUT, true, "terminate call at most after x seconds");
 	}
 
