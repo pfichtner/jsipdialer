@@ -277,7 +277,6 @@ class SipClientMainNativeIT {
 		calleeCall.listen();
 
 		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
-		await().atMost(5, TimeUnit.SECONDS).untilTrue(inviteReceived);
 
 		ProcessBuilder pb = new ProcessBuilder(
 				NATIVE_BINARY.toAbsolutePath().toString(),
@@ -290,8 +289,25 @@ class SipClientMainNativeIT {
 		pb.redirectErrorStream(true);
 
 		Process process = pb.start();
-		String output = new String(process.getInputStream().readAllBytes());
+
+		// Drain output in background so the process does not block on a full pipe
+		// and so we can await the INVITE arriving at the callee.
+		ByteArrayOutputStream outBuf = new ByteArrayOutputStream();
+		Thread outReader = new Thread(() -> {
+			try (InputStream in = process.getInputStream()) {
+				in.transferTo(outBuf);
+			} catch (IOException ignored) {
+			}
+		});
+		outReader.start();
+
+		// The caller was just started; wait until its INVITE actually reaches
+		// the callee (which then sends 183 and refuses).
+		await().atMost(10, TimeUnit.SECONDS).untilTrue(inviteReceived);
+
 		boolean exited = process.waitFor(30, TimeUnit.SECONDS);
+		outReader.join();
+		String output = outBuf.toString(StandardCharsets.UTF_8);
 
 		assertThat(exited).as("Process should exit within timeout").isTrue();
 		assertThat(process.exitValue()).as("Exit code should be 1 (call refused after provisional)%n%s", output).isEqualTo(1);
