@@ -1,5 +1,6 @@
 package com.github.pfichtner.jsipdialer;
 
+import java.lang.reflect.Field;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -13,6 +14,7 @@ import org.mjsip.sip.call.Call;
 import org.mjsip.sip.call.CallListenerAdapter;
 import org.mjsip.sip.call.ExtendedCall;
 import org.mjsip.sip.call.SipUser;
+import org.mjsip.sip.dialog.InviteDialog;
 import org.mjsip.sip.message.SipMessage;
 import org.mjsip.sip.provider.SipConfig;
 import org.mjsip.sip.provider.SipProvider;
@@ -32,6 +34,7 @@ public class CallService {
 	private final int localPort;
 
 	private volatile boolean success;
+	private volatile boolean callAccepted;
 	private volatile String reason;
 
 	public CallService(String serverAddress, int serverPort, String username, String password,
@@ -69,6 +72,7 @@ public class CallService {
 		var listener = new CallListenerAdapter() {
 			@Override
 			public void onCallAccepted(Call call, SdpMessage sdp, SipMessage resp) {
+				callAccepted = true;
 				success = true;
 				CallService.this.reason = "OK";
 				latch.countDown();
@@ -117,7 +121,13 @@ public class CallService {
 		ExtendedCall call = new ExtendedCall(sipProvider, sipUser, listener);
 
 		if (timeoutSeconds > 0) {
-			sipProvider.scheduler().schedule(timeoutSeconds * 1000L, call::hangup);
+			sipProvider.scheduler().schedule(timeoutSeconds * 1000L, () -> {
+				if (callAccepted) {
+					call.hangup();
+				} else {
+					cancelCall(call, sipProvider);
+				}
+			});
 		}
 
 		NameAddress callee = new NameAddress(new SipURI(destinationNumber, serverAddress));
@@ -145,5 +155,24 @@ public class CallService {
 
 	public String getReason() {
 		return reason;
+	}
+
+	private static void cancelCall(Call call, SipProvider sipProvider) {
+		try {
+			Field dialogField = Call.class.getDeclaredField("dialog");
+			dialogField.setAccessible(true);
+			InviteDialog dialog = (InviteDialog) dialogField.get(call);
+			if (dialog != null) {
+				Field inviteReqField = InviteDialog.class.getDeclaredField("invite_req");
+				inviteReqField.setAccessible(true);
+				SipMessage inviteReq = (SipMessage) inviteReqField.get(dialog);
+				if (inviteReq != null) {
+					sipProvider.sendMessage(sipProvider.messageFactory().createCancelRequest(inviteReq));
+					return;
+				}
+			}
+		} catch (Exception ignored) {
+		}
+		call.hangup();
 	}
 }

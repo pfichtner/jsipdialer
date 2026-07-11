@@ -164,6 +164,55 @@ class SipRegistrarIT {
 		callee.halt();
 	}
 
+	@Test
+	void timeoutAfterProvisional() throws Exception {
+		int calleePort = freePort();
+		int callerPort = freePort();
+		String calleeUser = "callee12";
+
+		SchedulerConfig schedConfig = new SchedulerConfig();
+		SipConfig config = new SipConfig();
+		config.setTransportProtocols(new String[] { "udp" });
+		config.setHostPort(calleePort);
+		config.setViaAddrIPv4("127.0.0.1");
+		config.setTransactionTimeout(5000);
+		config.setForceRport(true);
+		config.normalize();
+
+		SipProvider calleeProvider = new SipProvider(config, new ConfiguredScheduler(schedConfig));
+
+		AtomicBoolean registered = new AtomicBoolean();
+		sendRegister(calleeProvider, REGISTRAR_HOST, KAMAILIO_PORT, calleeUser, "127.0.0.1", calleePort, registered);
+
+		SdpMessage calleeSdp = SdpMessage.createSdpMessage(calleeUser, "0.0.0.0");
+		ExtendedCall calleeCall = new ExtendedCall(calleeProvider,
+				new SipUser(
+						new NameAddress(new SipURI(calleeUser, "127.0.0.1")),
+						new NameAddress(new SipURI(calleeUser, "127.0.0.1", calleePort))),
+				new CallListenerAdapter() {
+					@Override
+					public void onCallInvite(Call call, NameAddress callee, NameAddress caller,
+							SdpMessage sdp, SipMessage invite) {
+						System.err.println("CALLEE12: received INVITE, sending 183 but not answering");
+						System.err.flush();
+						SipMessage resp183 = calleeProvider.messageFactory()
+								.createResponse(invite, 183, "Session Progress", null);
+						calleeProvider.sendMessage(resp183);
+					}
+				});
+		calleeCall.setLocalSessionDescriptor(calleeSdp);
+		calleeCall.listen();
+
+		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
+
+		CallService callService = createCaller(callerPort, calleeUser, 3);
+		assertThat(callService.call()).isFalse();
+		assertThat(callService.getReason()).as("Reason should indicate CANCEL, not timeout")
+				.isNotEqualTo("Request Timeout");
+
+		calleeProvider.halt();
+	}
+
 	private static int freePort() throws IOException {
 		try (ServerSocket s = new ServerSocket(0)) {
 			s.setReuseAddress(true);
