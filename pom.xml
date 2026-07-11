@@ -207,14 +207,33 @@
 						</goals>
 						<phase>package</phase>
 						<configuration>
-							<skip>${skipNativeImage}</skip>
 							<mainClass>${mainClass}</mainClass>
 							<imageName>jsipdialer</imageName>
 							<buildArgs>
 								<buildArg>--static</buildArg>
-								<buildArg>--libc=musl</buildArg>
-								<buildArg>--report-unsupported-elements-at-runtime</buildArg>
+								<buildArg>-H:+ReportUnsupportedElementsAtRuntime</buildArg>
 							</buildArgs>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>3.5.0</version>
+				<executions>
+					<execution>
+						<id>upx-compress</id>
+						<phase>pre-integration-test</phase>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+						<configuration>
+							<executable>upx</executable>
+							<arguments>
+								<argument>target/jsipdialer</argument>
+							</arguments>
 						</configuration>
 					</execution>
 				</executions>
