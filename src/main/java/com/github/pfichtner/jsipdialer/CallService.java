@@ -18,6 +18,8 @@ import org.mjsip.sip.dialog.InviteDialog;
 import org.mjsip.sip.message.SipMessage;
 import org.mjsip.sip.provider.SipConfig;
 import org.mjsip.sip.provider.SipProvider;
+import org.mjsip.sip.transaction.TransactionClient;
+import org.mjsip.sip.transaction.TransactionClientListener;
 import org.mjsip.time.ConfiguredScheduler;
 import org.mjsip.time.SchedulerConfig;
 
@@ -165,13 +167,52 @@ public class CallService {
 				inviteReqField.setAccessible(true);
 				SipMessage inviteReq = (SipMessage) inviteReqField.get(dialog);
 				if (inviteReq != null) {
-					sipProvider.sendMessage(sipProvider.messageFactory().createCancelRequest(inviteReq));
-					return;
-				}
-			}
+					// Construct CANCEL request
+                    SipMessage cancel = sipProvider.messageFactory().createCancelRequest(inviteReq);
+                    
+                    // Send CANCEL via TransactionClient (proper transaction handling)
+TransactionClient tc = new TransactionClient(sipProvider, cancel, new TransactionClientListenerAdapter() {
+    @Override
+    public void onTransProvisionalResponse(TransactionClient tc, SipMessage response) {
+        // Handle provisional responses if needed
+    }
+
+    @Override
+    public void onTransSuccessResponse(TransactionClient tc, SipMessage response) {
+        // Handle 200 OK (CANCEL response) - might count down latch or set reason
+    }
+
+    @Override
+    public void onTransFailureResponse(TransactionClient tc, SipMessage response) {
+        // Handle failures
+    }
+
+    @Override
+    public void onTransTimeout(TransactionClient tc) {
+        // Handle timeout
+    }
+});
+                    tc.request();
+                    return;
+                }
+            }
 		} catch (Exception ignored) {
 		}
 		call.hangup();
+	}
+
+	private static class TransactionClientListenerAdapter implements TransactionClientListener {
+		@Override
+		public void onTransProvisionalResponse(TransactionClient tc, SipMessage response) {}
+
+		@Override
+		public void onTransSuccessResponse(TransactionClient tc, SipMessage response) {}
+
+		@Override
+		public void onTransFailureResponse(TransactionClient tc, SipMessage response) {}
+
+		@Override
+		public void onTransTimeout(TransactionClient tc) {}
 	}
 
 	private static class CallExt extends ExtendedCall {

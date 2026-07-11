@@ -229,6 +229,76 @@ class SipClientMainNativeIT {
 		calleeProvider.halt();
 	}
 
+	@Test
+	void calleeRefusesAfterProvisional() throws Exception {
+		if (!Files.isExecutable(NATIVE_BINARY)) {
+			System.err.println("Skipping native binary test: " + NATIVE_BINARY + " not found or not executable");
+			return;
+		}
+
+		int calleePort = freePort();
+		String calleeUser = "natcalleerefuseprov";
+
+		AtomicBoolean registered = new AtomicBoolean();
+
+		SchedulerConfig schedConfig = new SchedulerConfig();
+		SipConfig config = new SipConfig();
+		config.setTransportProtocols(new String[] { "udp" });
+		config.setHostPort(calleePort);
+		config.setViaAddrIPv4("127.0.0.1");
+		config.setTransactionTimeout(5000);
+		config.setForceRport(true);
+		config.normalize();
+
+		SipProvider calleeProvider = new SipProvider(config, new ConfiguredScheduler(schedConfig));
+
+		sendRegister(calleeProvider, REGISTRAR_HOST, KAMAILIO_PORT, calleeUser, "127.0.0.1", calleePort, registered);
+
+		AtomicBoolean inviteReceived = new AtomicBoolean(false);
+		SdpMessage calleeSdp = SdpMessage.createSdpMessage(calleeUser, "0.0.0.0");
+		ExtendedCall calleeCall = new ExtendedCall(calleeProvider,
+				new SipUser(
+						new NameAddress(new SipURI(calleeUser, "127.0.0.1")),
+						new NameAddress(new SipURI(calleeUser, "127.0.0.1", calleePort))),
+				new CallListenerAdapter() {
+					@Override
+					public void onCallInvite(Call call, NameAddress callee, NameAddress caller,
+							SdpMessage sdp, SipMessage invite) {
+						System.err.println("CALLEEPROVREFUSE: received INVITE, sending 183 then refusing");
+						System.err.flush();
+						inviteReceived.set(true);
+						SipMessage resp183 = calleeProvider.messageFactory()
+								.createResponse(invite, 183, "Session Progress", null);
+						calleeProvider.sendMessage(resp183);
+						call.refuse();
+					}
+				});
+		calleeCall.setLocalSessionDescriptor(calleeSdp);
+		calleeCall.listen();
+
+		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
+		await().atMost(5, TimeUnit.SECONDS).untilTrue(inviteReceived);
+
+		ProcessBuilder pb = new ProcessBuilder(
+				NATIVE_BINARY.toAbsolutePath().toString(),
+				"-sipServerAddress", REGISTRAR_HOST,
+				"-sipServerPort", String.valueOf(KAMAILIO_PORT),
+				"-sipUsername", "natcaller",
+				"-sipPassword", "pass",
+				"-destinationNumber", calleeUser,
+				"-timeout", "10");
+		pb.redirectErrorStream(true);
+
+		Process process = pb.start();
+		String output = new String(process.getInputStream().readAllBytes());
+		boolean exited = process.waitFor(30, TimeUnit.SECONDS);
+
+		assertThat(exited).as("Process should exit within timeout").isTrue();
+		assertThat(process.exitValue()).as("Exit code should be 1 (call refused after provisional)%n%s", output).isEqualTo(1);
+
+		calleeProvider.halt();
+	}
+
 	private static int freePort() throws IOException {
 		try (ServerSocket s = new ServerSocket(0)) {
 			s.setReuseAddress(true);
