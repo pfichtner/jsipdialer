@@ -72,22 +72,10 @@ class SipClientMainNativeIT {
 		});
 		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
 
-		ProcessBuilder pb = new ProcessBuilder(
-				NATIVE_BINARY.toAbsolutePath().toString(),
-				"-" + SipClientMain.SIP_SERVER_ADDRESS, REGISTRAR_HOST,
-				"-" + SipClientMain.SIP_SERVER_PORT, String.valueOf(KAMAILIO_PORT),
-				"-" + SipClientMain.USERNAME, "natcaller",
-				"-" + SipClientMain.PASSWORD, "pass",
-				"-" + SipClientMain.DESTINATION_NUMBER, "natcallee",
-				"-" + SipClientMain.TIMEOUT, "10");
-		pb.redirectErrorStream(true);
+		ProcessResult result = runCaller(callerProcessBuilder("natcallee", 10));
 
-		Process process = pb.start();
-		String output = new String(process.getInputStream().readAllBytes());
-		boolean exited = process.waitFor(30, TimeUnit.SECONDS);
-
-		assertThat(exited).as("Process should exit within timeout").isTrue();
-		assertThat(process.exitValue()).as("Exit code should be 0 (call accepted)%n%s", output).isZero();
+		assertThat(result.exited()).as("Process should exit within timeout").isTrue();
+		assertThat(result.exitValue()).as("Exit code should be 0 (call accepted)%n%s", result.output()).isZero();
 
 		callee.hangup();
 		callee.halt();
@@ -110,22 +98,10 @@ class SipClientMainNativeIT {
 		});
 		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
 
-		ProcessBuilder pb = new ProcessBuilder(
-				NATIVE_BINARY.toAbsolutePath().toString(),
-				"-" + SipClientMain.SIP_SERVER_ADDRESS, REGISTRAR_HOST,
-				"-" + SipClientMain.SIP_SERVER_PORT, String.valueOf(KAMAILIO_PORT),
-				"-" + SipClientMain.USERNAME, "natcaller",
-				"-" + SipClientMain.PASSWORD, "pass",
-				"-" + SipClientMain.DESTINATION_NUMBER, "natcalleerefuse",
-				"-" + SipClientMain.TIMEOUT, "10");
-		pb.redirectErrorStream(true);
+		ProcessResult result = runCaller(callerProcessBuilder("natcalleerefuse", 10));
 
-		Process process = pb.start();
-		String output = new String(process.getInputStream().readAllBytes());
-		boolean exited = process.waitFor(30, TimeUnit.SECONDS);
-
-		assertThat(exited).as("Process should exit within timeout").isTrue();
-		assertThat(process.exitValue()).as("Exit code should be 1 (call refused)%n%s", output).isEqualTo(1);
+		assertThat(result.exited()).as("Process should exit within timeout").isTrue();
+		assertThat(result.exitValue()).as("Exit code should be 1 (call refused)%n%s", result.output()).isEqualTo(1);
 
 		callee.halt();
 	}
@@ -146,22 +122,10 @@ class SipClientMainNativeIT {
 		});
 		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
 
-		ProcessBuilder pb = new ProcessBuilder(
-				NATIVE_BINARY.toAbsolutePath().toString(),
-				"-" + SipClientMain.SIP_SERVER_ADDRESS, REGISTRAR_HOST,
-				"-" + SipClientMain.SIP_SERVER_PORT, String.valueOf(KAMAILIO_PORT),
-				"-" + SipClientMain.USERNAME, "natcaller",
-				"-" + SipClientMain.PASSWORD, "pass",
-				"-" + SipClientMain.DESTINATION_NUMBER, "natcalleetimeout",
-				"-" + SipClientMain.TIMEOUT, "3");
-		pb.redirectErrorStream(true);
+		ProcessResult result = runCaller(callerProcessBuilder("natcalleetimeout", 3));
 
-		Process process = pb.start();
-		String output = new String(process.getInputStream().readAllBytes());
-		boolean exited = process.waitFor(30, TimeUnit.SECONDS);
-
-		assertThat(exited).as("Process should exit within timeout").isTrue();
-		assertThat(process.exitValue()).as("Exit code should be 1 (timeout, no answer)%n%s", output).isEqualTo(1);
+		assertThat(result.exited()).as("Process should exit within timeout").isTrue();
+		assertThat(result.exitValue()).as("Exit code should be 1 (timeout, no answer)%n%s", result.output()).isEqualTo(1);
 
 		callee.halt();
 	}
@@ -212,22 +176,10 @@ class SipClientMainNativeIT {
 
 		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
 
-		ProcessBuilder pb = new ProcessBuilder(
-				NATIVE_BINARY.toAbsolutePath().toString(),
-				"-" + SipClientMain.SIP_SERVER_ADDRESS, REGISTRAR_HOST,
-				"-" + SipClientMain.SIP_SERVER_PORT, String.valueOf(KAMAILIO_PORT),
-				"-" + SipClientMain.USERNAME, "natcaller",
-				"-" + SipClientMain.PASSWORD, "pass",
-				"-" + SipClientMain.DESTINATION_NUMBER, calleeUser,
-				"-" + SipClientMain.TIMEOUT, "3");
-		pb.redirectErrorStream(true);
+		ProcessResult result = runCaller(callerProcessBuilder(calleeUser, 3));
 
-		Process process = pb.start();
-		String output = new String(process.getInputStream().readAllBytes());
-		boolean exited = process.waitFor(30, TimeUnit.SECONDS);
-
-		assertThat(exited).as("Process should exit within timeout").isTrue();
-		assertThat(process.exitValue()).as("Exit code should be 1 (timeout after 183)%n%s", output).isEqualTo(1);
+		assertThat(result.exited()).as("Process should exit within timeout").isTrue();
+		assertThat(result.exitValue()).as("Exit code should be 1 (timeout after 183)%n%s", result.output()).isEqualTo(1);
 
 		calleeProvider.halt();
 	}
@@ -281,15 +233,7 @@ class SipClientMainNativeIT {
 
 		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
 
-		ProcessBuilder pb = new ProcessBuilder(
-				NATIVE_BINARY.toAbsolutePath().toString(),
-				"-" + SipClientMain.SIP_SERVER_ADDRESS, REGISTRAR_HOST,
-				"-" + SipClientMain.SIP_SERVER_PORT, String.valueOf(KAMAILIO_PORT),
-				"-" + SipClientMain.USERNAME, "natcaller",
-				"-" + SipClientMain.PASSWORD, "pass",
-				"-" + SipClientMain.DESTINATION_NUMBER, calleeUser,
-				"-" + SipClientMain.TIMEOUT, "10");
-		pb.redirectErrorStream(true);
+		ProcessBuilder pb = callerProcessBuilder(calleeUser, 10);
 
 		Process process = pb.start();
 
@@ -316,6 +260,28 @@ class SipClientMainNativeIT {
 		assertThat(process.exitValue()).as("Exit code should be 1 (call refused after provisional)%n%s", output).isEqualTo(1);
 
 		calleeProvider.halt();
+	}
+
+	private static ProcessBuilder callerProcessBuilder(String destinationNumber, int timeout) {
+		return new ProcessBuilder(
+				NATIVE_BINARY.toAbsolutePath().toString(),
+				"-" + SipClientMain.SIP_SERVER_ADDRESS, REGISTRAR_HOST,
+				"-" + SipClientMain.SIP_SERVER_PORT, String.valueOf(KAMAILIO_PORT),
+				"-" + SipClientMain.USERNAME, "natcaller",
+				"-" + SipClientMain.PASSWORD, "pass",
+				"-" + SipClientMain.DESTINATION_NUMBER, destinationNumber,
+				"-" + SipClientMain.TIMEOUT, String.valueOf(timeout))
+				.redirectErrorStream(true);
+	}
+
+	private static ProcessResult runCaller(ProcessBuilder pb) throws IOException, InterruptedException {
+		Process process = pb.start();
+		String output = new String(process.getInputStream().readAllBytes());
+		boolean exited = process.waitFor(30, TimeUnit.SECONDS);
+		return new ProcessResult(exited, exited ? process.exitValue() : -1, output);
+	}
+
+	private record ProcessResult(boolean exited, int exitValue, String output) {
 	}
 
 	private static int freePort() throws IOException {
