@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mjsip.sdp.SdpMessage;
 import org.mjsip.sip.address.GenericURI;
@@ -40,6 +41,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Tag("integration")
 @Testcontainers
+@EnabledIf(value = "nativeBinaryExecutable", disabledReason = "native binary not found or not executable")
 @ExtendWith(KamailioLogDumperExtension.class)
 class SipClientMainNativeIT {
 
@@ -55,13 +57,12 @@ class SipClientMainNativeIT {
 			.withNetworkMode("host")
 			.waitingFor(Wait.forLogMessage(".*Listening on.*", 1));
 
+	private static boolean nativeBinaryExecutable() {
+		return Files.isExecutable(NATIVE_BINARY);
+	}
+
 	@Test
 	void callThroughRegistrar() throws Exception {
-		if (!Files.isExecutable(NATIVE_BINARY)) {
-			System.err.println("Skipping native binary test: " + NATIVE_BINARY + " not found or not executable");
-			return;
-		}
-
 		int calleePort = freePort();
 
 		AtomicBoolean registered = new AtomicBoolean();
@@ -83,11 +84,6 @@ class SipClientMainNativeIT {
 
 	@Test
 	void calleeRefuses() throws Exception {
-		if (!Files.isExecutable(NATIVE_BINARY)) {
-			System.err.println("Skipping native binary test: " + NATIVE_BINARY + " not found or not executable");
-			return;
-		}
-
 		int calleePort = freePort();
 
 		AtomicBoolean registered = new AtomicBoolean();
@@ -108,11 +104,6 @@ class SipClientMainNativeIT {
 
 	@Test
 	void timeoutNoAnswer() throws Exception {
-		if (!Files.isExecutable(NATIVE_BINARY)) {
-			System.err.println("Skipping native binary test: " + NATIVE_BINARY + " not found or not executable");
-			return;
-		}
-
 		int calleePort = freePort();
 
 		AtomicBoolean registered = new AtomicBoolean();
@@ -132,11 +123,6 @@ class SipClientMainNativeIT {
 
 	@Test
 	void timeoutAfterProvisional() throws Exception {
-		if (!Files.isExecutable(NATIVE_BINARY)) {
-			System.err.println("Skipping native binary test: " + NATIVE_BINARY + " not found or not executable");
-			return;
-		}
-
 		int calleePort = freePort();
 		String calleeUser = "natcalleeprov";
 
@@ -186,11 +172,6 @@ class SipClientMainNativeIT {
 
 	@Test
 	void calleeRefusesAfterProvisional() throws Exception {
-		if (!Files.isExecutable(NATIVE_BINARY)) {
-			System.err.println("Skipping native binary test: " + NATIVE_BINARY + " not found or not executable");
-			return;
-		}
-
 		int calleePort = freePort();
 		String calleeUser = "natcalleerefuseprov";
 
