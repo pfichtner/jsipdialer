@@ -4,6 +4,7 @@ on: [push, pull_request]
 
 permissions:
   contents: read
+  checks: write
 
 jobs:
   build:
@@ -42,6 +43,13 @@ jobs:
           fi
       - name: Build with Maven
         run: ./mvnw verify
+      - name: Publish Test Report
+        uses: dorny/test-reporter@v2
+        if: always()
+        with:
+          name: JUnit Tests (${{ matrix.os }})
+          path: target/surefire-reports/*.xml
+          reporter: java-junit
       - name: Compress and move files
         run: |
           mkdir -p publish-artifacts
