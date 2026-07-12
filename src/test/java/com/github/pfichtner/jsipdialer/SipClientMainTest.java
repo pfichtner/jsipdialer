@@ -23,13 +23,13 @@ import org.junitpioneer.jupiter.WritesStdIo;
 
 class SipClientMainTest {
 
-	private static final String ARGNAME_SIP_SERVER_ADDRESS = "sipServerAddress";
-	private static final String ARGNAME_SIP_SERVER_PORT = "sipServerPort";
-	private static final String ARGNAME_SIP_USERNAME = "sipUsername";
-	private static final String ARGNAME_SIP_PASSWORD = "sipPassword";
-	private static final String ARGNAME_CALLER_NAME = "callerName";
-	private static final String ARGNAME_DESTINATION_NUMBER = "destinationNumber";
-	private static final String ARGNAME_TIMEOUT = "timeout";
+	private static final String ARGNAME_SIP_SERVER_ADDRESS = SipClientMain.SIP_SERVER_ADDRESS;
+	private static final String ARGNAME_SIP_SERVER_PORT = SipClientMain.SIP_SERVER_PORT;
+	private static final String ARGNAME_SIP_USERNAME = SipClientMain.USERNAME;
+	private static final String ARGNAME_SIP_PASSWORD = SipClientMain.PASSWORD;
+	private static final String ARGNAME_CALLER_NAME = SipClientMain.CALLER_NAME;
+	private static final String ARGNAME_DESTINATION_NUMBER = SipClientMain.DESTINATION_NUMBER;
+	private static final String ARGNAME_TIMEOUT = SipClientMain.TIMEOUT;
 
 	private final class SipClientMainSpy extends SipClientMain {
 
@@ -126,8 +126,8 @@ class SipClientMainTest {
 	}
 
 	@Test
-	@SetEnvironmentVariable(key = "SIP_USERNAME", value = "userNameViaEnv")
-	@SetEnvironmentVariable(key = "SIP_PASSWORD", value = "passwordViaEnv")
+	@SetEnvironmentVariable(key = SipClientMain.ENVVAR_SIP_USERNAME, value = "userNameViaEnv")
+	@SetEnvironmentVariable(key = SipClientMain.ENVVAR_SIP_PASSWORD, value = "passwordViaEnv")
 	void allRequiredParametersSetWhereUsernameAndPasswordAreSetViaEnvVars() throws Exception {
 		callMain(setValuesOn(requiredArgs()));
 		assertSoftly(s -> {

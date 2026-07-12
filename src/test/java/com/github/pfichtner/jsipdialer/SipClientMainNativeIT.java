@@ -74,12 +74,12 @@ class SipClientMainNativeIT {
 
 		ProcessBuilder pb = new ProcessBuilder(
 				NATIVE_BINARY.toAbsolutePath().toString(),
-				"-sipServerAddress", REGISTRAR_HOST,
-				"-sipServerPort", String.valueOf(KAMAILIO_PORT),
-				"-sipUsername", "natcaller",
-				"-sipPassword", "pass",
-				"-destinationNumber", "natcallee",
-				"-timeout", "10");
+				"-" + SipClientMain.SIP_SERVER_ADDRESS, REGISTRAR_HOST,
+				"-" + SipClientMain.SIP_SERVER_PORT, String.valueOf(KAMAILIO_PORT),
+				"-" + SipClientMain.USERNAME, "natcaller",
+				"-" + SipClientMain.PASSWORD, "pass",
+				"-" + SipClientMain.DESTINATION_NUMBER, "natcallee",
+				"-" + SipClientMain.TIMEOUT, "10");
 		pb.redirectErrorStream(true);
 
 		Process process = pb.start();
@@ -112,12 +112,12 @@ class SipClientMainNativeIT {
 
 		ProcessBuilder pb = new ProcessBuilder(
 				NATIVE_BINARY.toAbsolutePath().toString(),
-				"-sipServerAddress", REGISTRAR_HOST,
-				"-sipServerPort", String.valueOf(KAMAILIO_PORT),
-				"-sipUsername", "natcaller",
-				"-sipPassword", "pass",
-				"-destinationNumber", "natcalleerefuse",
-				"-timeout", "10");
+				"-" + SipClientMain.SIP_SERVER_ADDRESS, REGISTRAR_HOST,
+				"-" + SipClientMain.SIP_SERVER_PORT, String.valueOf(KAMAILIO_PORT),
+				"-" + SipClientMain.USERNAME, "natcaller",
+				"-" + SipClientMain.PASSWORD, "pass",
+				"-" + SipClientMain.DESTINATION_NUMBER, "natcalleerefuse",
+				"-" + SipClientMain.TIMEOUT, "10");
 		pb.redirectErrorStream(true);
 
 		Process process = pb.start();
@@ -148,12 +148,12 @@ class SipClientMainNativeIT {
 
 		ProcessBuilder pb = new ProcessBuilder(
 				NATIVE_BINARY.toAbsolutePath().toString(),
-				"-sipServerAddress", REGISTRAR_HOST,
-				"-sipServerPort", String.valueOf(KAMAILIO_PORT),
-				"-sipUsername", "natcaller",
-				"-sipPassword", "pass",
-				"-destinationNumber", "natcalleetimeout",
-				"-timeout", "3");
+				"-" + SipClientMain.SIP_SERVER_ADDRESS, REGISTRAR_HOST,
+				"-" + SipClientMain.SIP_SERVER_PORT, String.valueOf(KAMAILIO_PORT),
+				"-" + SipClientMain.USERNAME, "natcaller",
+				"-" + SipClientMain.PASSWORD, "pass",
+				"-" + SipClientMain.DESTINATION_NUMBER, "natcalleetimeout",
+				"-" + SipClientMain.TIMEOUT, "3");
 		pb.redirectErrorStream(true);
 
 		Process process = pb.start();
@@ -214,12 +214,12 @@ class SipClientMainNativeIT {
 
 		ProcessBuilder pb = new ProcessBuilder(
 				NATIVE_BINARY.toAbsolutePath().toString(),
-				"-sipServerAddress", REGISTRAR_HOST,
-				"-sipServerPort", String.valueOf(KAMAILIO_PORT),
-				"-sipUsername", "natcaller",
-				"-sipPassword", "pass",
-				"-destinationNumber", calleeUser,
-				"-timeout", "3");
+				"-" + SipClientMain.SIP_SERVER_ADDRESS, REGISTRAR_HOST,
+				"-" + SipClientMain.SIP_SERVER_PORT, String.valueOf(KAMAILIO_PORT),
+				"-" + SipClientMain.USERNAME, "natcaller",
+				"-" + SipClientMain.PASSWORD, "pass",
+				"-" + SipClientMain.DESTINATION_NUMBER, calleeUser,
+				"-" + SipClientMain.TIMEOUT, "3");
 		pb.redirectErrorStream(true);
 
 		Process process = pb.start();
@@ -283,12 +283,12 @@ class SipClientMainNativeIT {
 
 		ProcessBuilder pb = new ProcessBuilder(
 				NATIVE_BINARY.toAbsolutePath().toString(),
-				"-sipServerAddress", REGISTRAR_HOST,
-				"-sipServerPort", String.valueOf(KAMAILIO_PORT),
-				"-sipUsername", "natcaller",
-				"-sipPassword", "pass",
-				"-destinationNumber", calleeUser,
-				"-timeout", "10");
+				"-" + SipClientMain.SIP_SERVER_ADDRESS, REGISTRAR_HOST,
+				"-" + SipClientMain.SIP_SERVER_PORT, String.valueOf(KAMAILIO_PORT),
+				"-" + SipClientMain.USERNAME, "natcaller",
+				"-" + SipClientMain.PASSWORD, "pass",
+				"-" + SipClientMain.DESTINATION_NUMBER, calleeUser,
+				"-" + SipClientMain.TIMEOUT, "10");
 		pb.redirectErrorStream(true);
 
 		Process process = pb.start();

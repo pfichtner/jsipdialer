@@ -17,18 +17,18 @@ public class SipClientMain {
 	public static final int DEFAULT_SIPPORT = 5060;
 	public static final int DEFAULT_TIMEOUT = 15;
 
-	private static final String ENVVAR_SIP_USERNAME = "SIP_USERNAME";
-	private static final String ENVVAR_SIP_PASSWORD = "SIP_PASSWORD";
+	public static final String ENVVAR_SIP_USERNAME = "SIP_USERNAME";
+	public static final String ENVVAR_SIP_PASSWORD = "SIP_PASSWORD";
 
-	private static final String DESTINATION_NUMBER = "destinationNumber";
-	private static final String CALLER_NAME = "callerName";
-	private static final String TIMEOUT = "timeout";
+	public static final String DESTINATION_NUMBER = "destinationNumber";
+	public static final String CALLER_NAME = "callerName";
+	public static final String TIMEOUT = "timeout";
 
-	private static final String USERNAME = "sipUsername";
-	private static final String PASSWORD = "sipPassword";
+	public static final String USERNAME = "sipUsername";
+	public static final String PASSWORD = "sipPassword";
 
-	private static final String SIP_SERVER_ADDRESS = "sipServerAddress";
-	private static final String SIP_SERVER_PORT = "sipServerPort";
+	public static final String SIP_SERVER_ADDRESS = "sipServerAddress";
+	public static final String SIP_SERVER_PORT = "sipServerPort";
 
 	public static void main(String... args) throws Exception {
 		var exitCode = new SipClientMain().doMain(args);
