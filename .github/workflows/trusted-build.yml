@@ -19,6 +19,15 @@ jobs:
     env:
       MAVEN_PKG_TOKEN: ${{ secrets.MAVEN_PKG_TOKEN }}
     steps:
+      - name: Debug secret availability
+        run: |
+          if [ -n "$MAVEN_PKG_TOKEN" ]; then
+            echo "MAVEN_PKG_TOKEN is set (length: ${#MAVEN_PKG_TOKEN})"
+          else
+            echo "MAVEN_PKG_TOKEN is EMPTY or not set!"
+          fi
+        env:
+          MAVEN_PKG_TOKEN: ${{ secrets.MAVEN_PKG_TOKEN }}
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
