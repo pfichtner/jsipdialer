@@ -116,11 +116,15 @@ public class CallService {
 					String reason = msg.getStatusLine().getReason();
 					System.err.println("SIP RECV: " + code + " " + reason);
 					System.err.flush();
-					// Fallback: if we see a final response (2xx/4xx/5xx/6xx) that
-					// matches our INVITE's Call-ID and the dialog listener hasn't
-					// already handled it, handle it here.
+					// Fallback: if we see a final response (2xx/4xx except 401/407/5xx/6xx)
+					// that matches our INVITE's Call-ID and the dialog listener
+					// hasn't already handled it, handle it here.
+					// 401/407 are auth challenges handled by ExtendedInviteDialog
+					// (which re-sends the INVITE with Authorization), so we must NOT
+					// treat them as final — doing so would exit before the re-INVITE.
 					SipMessage invite = sentInvite;
 					if (invite != null && !remoteResponded && code >= 200
+							&& code != 401 && code != 407
 							&& sameCallId(msg, invite)) {
 						System.err.println("CALL: fallback detected final response " + code);
 						System.err.flush();
