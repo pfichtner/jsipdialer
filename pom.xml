@@ -204,7 +204,6 @@
 					<imageName>jsipdialer</imageName>
 					<mainClass>${mainClass}</mainClass>
 					<buildArgs>
-						<buildArg>--static</buildArg>
 						<buildArg>-H:+ReportUnsupportedElementsAtRuntime</buildArg>
 					</buildArgs>
 				</configuration>

@@ -1,5 +1,6 @@
 package com.github.pfichtner.jsipdialer;
 
+import java.lang.reflect.Field;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -13,7 +14,13 @@ import org.mjsip.sip.call.Call;
 import org.mjsip.sip.call.CallListenerAdapter;
 import org.mjsip.sip.call.ExtendedCall;
 import org.mjsip.sip.call.SipUser;
+import org.mjsip.sip.dialog.InviteDialog;
+import org.mjsip.sip.header.CSeqHeader;
+import org.mjsip.sip.header.MaxForwardsHeader;
+import org.mjsip.sip.header.RequestLine;
+import org.mjsip.sip.header.ViaHeader;
 import org.mjsip.sip.message.SipMessage;
+import org.mjsip.sip.message.SipMethods;
 import org.mjsip.sip.provider.SipConfig;
 import org.mjsip.sip.provider.SipProvider;
 import org.mjsip.time.ConfiguredScheduler;
@@ -170,11 +177,61 @@ public class CallService {
 		terminated = true;
 		CallExt c = this.call;
 		if (c != null) {
-			try {
-				c.hangup();
-			} catch (Exception ignored) {
-			}
+			sendCancel(c, sipProvider);
 		}
+	}
+
+	private static void sendCancel(CallExt call, SipProvider sipProvider) {
+		try {
+			InviteDialog dialog = call.getDialog();
+			if (dialog == null) {
+				return;
+			}
+			Field inviteTcField = InviteDialog.class.getDeclaredField("invite_tc");
+			inviteTcField.setAccessible(true);
+			Object inviteTc = inviteTcField.get(dialog);
+			if (inviteTc == null) {
+				return;
+			}
+			// Walk up class hierarchy: InviteTransactionClient -> TransactionClient -> Transaction
+			// The 'request' field is in Transaction (grandparent)
+			Class<?> clazz = inviteTc.getClass();
+			Field requestField = null;
+			while (clazz != null && requestField == null) {
+				try {
+					requestField = clazz.getDeclaredField("request");
+				} catch (NoSuchFieldException e) {
+					clazz = clazz.getSuperclass();
+				}
+			}
+			if (requestField == null) {
+				return;
+			}
+			requestField.setAccessible(true);
+			SipMessage sentRequest = (SipMessage) requestField.get(inviteTc);
+			if (sentRequest == null) {
+				return;
+			}
+			SipMessage cancel = buildCancelRequest(sentRequest);
+			sipProvider.sendMessage(cancel);
+		} catch (Exception ignored) {
+		}
+	}
+
+	private static SipMessage buildCancelRequest(SipMessage inviteReq) {
+		SipMessage cancel = new SipMessage();
+		cancel.setRequestLine(
+				new RequestLine(SipMethods.CANCEL, inviteReq.getRequestLine().getAddress()));
+		cancel.addViaHeader(inviteReq.getViaHeader());
+		cancel.setToHeader(inviteReq.getToHeader());
+		cancel.setFromHeader(inviteReq.getFromHeader());
+		cancel.setCallIdHeader(inviteReq.getCallIdHeader());
+		cancel.setCSeqHeader(
+				new CSeqHeader(inviteReq.getCSeqHeader().getSequenceNumber(), SipMethods.CANCEL));
+		cancel.setMaxForwardsHeader(new MaxForwardsHeader(70));
+		cancel.setContactHeader(inviteReq.getContactHeader());
+		cancel.setBody(null, (byte[]) null);
+		return cancel;
 	}
 
 	public String getReason() {
@@ -184,6 +241,10 @@ public class CallService {
 	private static class CallExt extends ExtendedCall {
 		CallExt(SipProvider sipProvider, SipUser user, CallListenerAdapter listener) {
 			super(sipProvider, user, listener);
+		}
+
+		InviteDialog getDialog() {
+			return dialog;
 		}
 	}
 }

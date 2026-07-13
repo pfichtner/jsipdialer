@@ -213,6 +213,67 @@ class SipRegistrarIT {
 		calleeProvider.halt();
 	}
 
+	@Test
+	void timeoutSendsCancel() throws Exception {
+		int calleePort = freePort();
+		int callerPort = freePort();
+		String calleeUser = "calleeCancel";
+
+		AtomicBoolean registered = new AtomicBoolean();
+		AtomicBoolean cancelReceived = new AtomicBoolean();
+
+		SchedulerConfig schedConfig = new SchedulerConfig();
+		SipConfig config = new SipConfig();
+		config.setTransportProtocols(new String[] { "udp" });
+		config.setHostPort(calleePort);
+		config.setViaAddrIPv4("127.0.0.1");
+		config.setTransactionTimeout(5000);
+		config.setForceRport(true);
+		config.normalize();
+
+		SipProvider calleeProvider = new SipProvider(config, new ConfiguredScheduler(schedConfig));
+
+		// Promiscuous listeners fire BEFORE specific listeners (SipProvider line 923 vs 932),
+		// so we can detect the CANCEL even though InviteDialog.onReceivedMessage() has the
+		// CANCEL handler commented out (responds with 405 Method Not Allowed).
+		calleeProvider.addPromiscuousListener(new SipProviderListener() {
+			@Override
+			public void onReceivedMessage(SipProvider p, SipMessage msg) {
+				if (msg.isRequest() && msg.isCancel()) {
+					System.err.println("CALLEECANCEL: detected CANCEL via promiscuous listener!");
+					System.err.flush();
+					cancelReceived.set(true);
+				}
+			}
+		});
+
+		sendRegister(calleeProvider, REGISTRAR_HOST, KAMAILIO_PORT, calleeUser, "127.0.0.1", calleePort, registered);
+
+		SdpMessage calleeSdp = SdpMessage.createSdpMessage(calleeUser, "0.0.0.0");
+		ExtendedCall calleeCall = new ExtendedCall(calleeProvider,
+				new SipUser(
+						new NameAddress(new SipURI(calleeUser, "127.0.0.1")),
+						new NameAddress(new SipURI(calleeUser, "127.0.0.1", calleePort))),
+				new CallListenerAdapter() {
+					@Override
+					public void onCallInvite(Call call, NameAddress callee, NameAddress caller,
+							SdpMessage sdp, SipMessage invite) {
+						System.err.println("CALLEECANCEL: received INVITE, ignoring (waiting for CANCEL)");
+						System.err.flush();
+					}
+				});
+		calleeCall.setLocalSessionDescriptor(calleeSdp);
+		calleeCall.listen();
+
+		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
+
+		CallService callService = createCaller(callerPort, calleeUser, 3);
+		assertThat(callService.call()).isFalse();
+		assertThat(cancelReceived).as("Callee should have received CANCEL on timeout").isTrue();
+
+		calleeProvider.halt();
+	}
+
 	private static int freePort() throws IOException {
 		try (ServerSocket s = new ServerSocket(0)) {
 			s.setReuseAddress(true);
