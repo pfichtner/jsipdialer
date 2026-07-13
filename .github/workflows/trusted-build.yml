@@ -1,0 +1,59 @@
+name: Dependabot Trusted Build
+
+on:
+  workflow_run:
+    workflows: ["GraalVM Native Image builds"]
+    types: [completed]
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  build:
+    name: jsipdialer on linux
+    runs-on: ubuntu-latest
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'failure'
+    env:
+      MAVEN_PKG_TOKEN: ${{ secrets.MAVEN_PKG_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: MAVEN_PKG_TOKEN
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '17'
+          distribution: 'graalvm'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          native-image-job-reports: 'true'
+      - name: Install UPX
+        run: sudo apt-get update && sudo apt-get install -y upx musl-tools build-essential zlib1g-dev
+      - name: Build with Maven
+        run: ./mvnw verify
+      - name: Publish Test Report
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: JUnit Tests (linux)
+          path: target/surefire-reports/*.xml
+          reporter: java-junit
+      - name: Compress and move files
+        run: |
+          mkdir -p publish-artifacts
+          tarname="linux"
+          (cd target && tar -czf "../publish-artifacts/jsipdialer_${tarname}.tar.gz" jsipdialer jsipdialer-*.jar)
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: publish-artifacts-linux
+          path: "publish-artifacts/*"
