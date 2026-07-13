@@ -80,7 +80,7 @@ class SipClientMainNativeIT {
 		assertThat(result.exited()).as("Process should exit within timeout").isTrue();
 		assertThat(result.exitValue()).as("Exit code should be 0 (call accepted)%n%s", result.output()).isZero();
 		assertThat(elapsed).as("Process should exit quickly when callee accepts, not wait for full timeout")
-				.isLessThan(8000);
+				.isLessThan(5000);
 
 		callee.hangup();
 		callee.halt();
@@ -137,10 +137,14 @@ class SipClientMainNativeIT {
 
 		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
 
+		long start = System.currentTimeMillis();
 		ProcessResult result = runCaller(callerProcessBuilder(calleeUser, 10));
+		long elapsed = System.currentTimeMillis() - start;
 
 		assertThat(result.exited()).as("Process should exit within timeout").isTrue();
 		assertThat(result.exitValue()).as("Exit code should be 0 (call accepted)%n%s", result.output()).isZero();
+		assertThat(elapsed).as("Process should exit quickly when callee accepts, not wait for full timeout")
+				.isLessThan(5000);
 		assertThat(cancelReceived)
 				.as("Callee should NOT receive CANCEL when call was accepted")
 				.isFalse();
@@ -167,7 +171,7 @@ class SipClientMainNativeIT {
 		assertThat(result.exited()).as("Process should exit within timeout").isTrue();
 		assertThat(result.exitValue()).as("Exit code should be 1 (call refused)%n%s", result.output()).isEqualTo(1);
 		assertThat(elapsed).as("Process should exit quickly when callee refuses, not wait for full timeout")
-				.isLessThan(8000);
+				.isLessThan(5000);
 
 		callee.halt();
 	}

@@ -77,7 +77,7 @@ class SipRegistrarIT {
 		assertThat(callService.call()).isTrue();
 		long elapsed = System.currentTimeMillis() - start;
 		assertThat(elapsed).as("call() should return quickly when callee accepts, not wait for timeout")
-				.isLessThan(8000);
+				.isLessThan(5000);
 
 		callee.hangup();
 		callee.halt();
@@ -104,7 +104,7 @@ class SipRegistrarIT {
 		assertThat(callService.call()).isTrue();
 		long elapsed = System.currentTimeMillis() - start;
 		assertThat(elapsed).as("call() should return quickly when callee accepts, not wait for timeout")
-				.isLessThan(8000);
+				.isLessThan(5000);
 
 		callee.halt();
 	}
@@ -162,7 +162,11 @@ class SipRegistrarIT {
 		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
 
 		CallService callService = createCaller(callerPort, calleeUser, 10);
+		long start = System.currentTimeMillis();
 		assertThat(callService.call()).isTrue();
+		long elapsed = System.currentTimeMillis() - start;
+		assertThat(elapsed).as("call() should return quickly when callee accepts, not wait for timeout")
+				.isLessThan(5000);
 		assertThat(cancelReceived)
 				.as("Callee should NOT receive CANCEL when call was accepted")
 				.isFalse();
@@ -183,7 +187,11 @@ class SipRegistrarIT {
 		callee.awaitRegistration();
 
 		CallService callService = createCaller(callerPort, "callee8", 3);
+		long start = System.currentTimeMillis();
 		assertThat(callService.call()).isTrue();
+		long elapsed = System.currentTimeMillis() - start;
+		assertThat(elapsed).as("call() should return quickly when callee accepts, not wait for timeout")
+				.isLessThan(5000);
 
 		callee.hangup();
 		callee.halt();
@@ -206,7 +214,7 @@ class SipRegistrarIT {
 		assertThat(callService.call()).isFalse();
 		long elapsed = System.currentTimeMillis() - start;
 		assertThat(elapsed).as("call() should return quickly when callee refuses, not wait for timeout")
-				.isLessThan(8000);
+				.isLessThan(5000);
 
 		callee.halt();
 	}

@@ -181,14 +181,11 @@ public class CallService {
 			return success;
 		} finally {
 			try {
-				Thread.sleep(500);
-			} catch (InterruptedException ignored) {
-			}
-			try {
 				Runtime.getRuntime().removeShutdownHook(shutdownHook);
 			} catch (IllegalStateException ignored) {
 			}
 			sipProvider.halt();
+			sipProvider.scheduler().scheduler().shutdownNow();
 		}
 	}
 
