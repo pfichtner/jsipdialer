@@ -97,20 +97,48 @@ public class CallService {
 		CountDownLatch latch = new CountDownLatch(1);
 		this.latch = latch;
 
-		// Log incoming SIP messages to stderr for debugging.
-		// Promiscuous listeners fire BEFORE transaction/dialog listeners,
-		// so we see everything the SIP provider receives.
+		// Promiscuous listeners fire BEFORE transaction/dialog listeners.
+		// We use this to both log incoming messages (for debugging) and as a
+		// fallback to detect final responses to our INVITE when mjSIP's own
+		// transaction/dialog listeners don't fire.
+		//
+		// With some SIP proxies (e.g. FritzBox), the 401 challenge causes a
+		// re-INVITE with authentication. The responses to the re-INVITE (200 OK,
+		// 487, etc.) arrive at the SipProvider but don't match any registered
+		// transaction listener — so mjSIP's onCallAccepted/onCallRefused never
+		// fire. Without this fallback, the program would wait for the full
+		// timeout instead of exiting when the callee responds.
 		sipProvider.addPromiscuousListener(new SipProviderListener() {
 			@Override
 			public void onReceivedMessage(SipProvider sipProvider, SipMessage msg) {
 				if (msg.isResponse()) {
 					int code = msg.getStatusLine().getCode();
-					System.err.println("SIP RECV: " + code + " " + msg.getStatusLine().getReason());
+					String reason = msg.getStatusLine().getReason();
+					System.err.println("SIP RECV: " + code + " " + reason);
+					System.err.flush();
+					// Fallback: if we see a final response (2xx/4xx/5xx/6xx) that
+					// matches our INVITE's Call-ID and the dialog listener hasn't
+					// already handled it, handle it here.
+					SipMessage invite = sentInvite;
+					if (invite != null && !remoteResponded && code >= 200
+							&& sameCallId(msg, invite)) {
+						System.err.println("CALL: fallback detected final response " + code);
+						System.err.flush();
+						remoteResponded = true;
+						if (code >= 200 && code < 300) {
+							success = true;
+							CallService.this.reason = "OK";
+						} else {
+							success = false;
+							CallService.this.reason = code + " " + reason;
+						}
+						latch.countDown();
+					}
 				} else {
 					System.err.println("SIP RECV: " + msg.getRequestLine().getMethod() + " "
 							+ msg.getRequestLine().getAddress());
+					System.err.flush();
 				}
-				System.err.flush();
 			}
 		});
 
@@ -284,5 +312,11 @@ public class CallService {
 
 	public String getReason() {
 		return reason;
+	}
+
+	private static boolean sameCallId(SipMessage a, SipMessage b) {
+		var ca = a.getCallIdHeader();
+		var cb = b.getCallIdHeader();
+		return ca != null && cb != null && ca.getCallId().equals(cb.getCallId());
 	}
 }
