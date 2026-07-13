@@ -1,6 +1,5 @@
 package com.github.pfichtner.jsipdialer;
 
-import java.lang.reflect.Field;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -14,13 +13,12 @@ import org.mjsip.sip.call.Call;
 import org.mjsip.sip.call.CallListenerAdapter;
 import org.mjsip.sip.call.ExtendedCall;
 import org.mjsip.sip.call.SipUser;
-import org.mjsip.sip.dialog.InviteDialog;
 import org.mjsip.sip.header.CSeqHeader;
 import org.mjsip.sip.header.MaxForwardsHeader;
 import org.mjsip.sip.header.RequestLine;
-import org.mjsip.sip.header.ViaHeader;
 import org.mjsip.sip.message.SipMessage;
 import org.mjsip.sip.message.SipMethods;
+import org.mjsip.sip.provider.ConnectionId;
 import org.mjsip.sip.provider.SipConfig;
 import org.mjsip.sip.provider.SipProvider;
 import org.mjsip.time.ConfiguredScheduler;
@@ -43,8 +41,9 @@ public class CallService {
 	private volatile String reason;
 	private volatile boolean terminated;
 
-	private CallExt call;
+	private ExtendedCall call;
 	private SipProvider sipProvider;
+	private volatile SipMessage sentInvite;
 
 	public CallService(String serverAddress, int serverPort, String username, String password,
 			String destinationNumber, String callerName, int timeoutSeconds, String transport) {
@@ -74,7 +73,15 @@ public class CallService {
 		sipConfig.normalize();
 
 		SchedulerConfig schedulerConfig = new SchedulerConfig();
-		sipProvider = new SipProvider(sipConfig, new ConfiguredScheduler(schedulerConfig));
+		sipProvider = new SipProvider(sipConfig, new ConfiguredScheduler(schedulerConfig)) {
+			@Override
+			public ConnectionId sendMessage(SipMessage msg) {
+				if (msg.isInvite()) {
+					sentInvite = msg;
+				}
+				return super.sendMessage(msg);
+			}
+		};
 
 		CountDownLatch latch = new CountDownLatch(1);
 
@@ -127,7 +134,7 @@ public class CallService {
 		SipUser sipUser = new SipUser(new NameAddress(new SipURI(username, serverAddress)), username, serverAddress,
 				password);
 
-		call = new CallExt(sipProvider, sipUser, listener);
+		call = new ExtendedCall(sipProvider, sipUser, listener);
 
 		Thread shutdownHook = new Thread(this::terminateCall, "sip-shutdown");
 		Runtime.getRuntime().addShutdownHook(shutdownHook);
@@ -175,47 +182,15 @@ public class CallService {
 			return;
 		}
 		terminated = true;
-		CallExt c = this.call;
-		if (c != null) {
-			sendCancel(c, sipProvider);
-		}
+		sendCancel();
 	}
 
-	private static void sendCancel(CallExt call, SipProvider sipProvider) {
-		try {
-			InviteDialog dialog = call.getDialog();
-			if (dialog == null) {
-				return;
-			}
-			Field inviteTcField = InviteDialog.class.getDeclaredField("invite_tc");
-			inviteTcField.setAccessible(true);
-			Object inviteTc = inviteTcField.get(dialog);
-			if (inviteTc == null) {
-				return;
-			}
-			// Walk up class hierarchy: InviteTransactionClient -> TransactionClient -> Transaction
-			// The 'request' field is in Transaction (grandparent)
-			Class<?> clazz = inviteTc.getClass();
-			Field requestField = null;
-			while (clazz != null && requestField == null) {
-				try {
-					requestField = clazz.getDeclaredField("request");
-				} catch (NoSuchFieldException e) {
-					clazz = clazz.getSuperclass();
-				}
-			}
-			if (requestField == null) {
-				return;
-			}
-			requestField.setAccessible(true);
-			SipMessage sentRequest = (SipMessage) requestField.get(inviteTc);
-			if (sentRequest == null) {
-				return;
-			}
-			SipMessage cancel = buildCancelRequest(sentRequest);
-			sipProvider.sendMessage(cancel);
-		} catch (Exception ignored) {
+	private void sendCancel() {
+		SipMessage invite = sentInvite;
+		if (invite == null) {
+			return;
 		}
+		sipProvider.sendMessage(buildCancelRequest(invite));
 	}
 
 	private static SipMessage buildCancelRequest(SipMessage inviteReq) {
@@ -236,15 +211,5 @@ public class CallService {
 
 	public String getReason() {
 		return reason;
-	}
-
-	private static class CallExt extends ExtendedCall {
-		CallExt(SipProvider sipProvider, SipUser user, CallListenerAdapter listener) {
-			super(sipProvider, user, listener);
-		}
-
-		InviteDialog getDialog() {
-			return dialog;
-		}
 	}
 }

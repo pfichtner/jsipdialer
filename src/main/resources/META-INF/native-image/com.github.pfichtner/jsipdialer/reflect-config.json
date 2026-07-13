@@ -1,26 +1,2 @@
 [
-  {
-    "name": "org.mjsip.sip.dialog.InviteDialog",
-    "allDeclaredFields": true,
-    "allDeclaredMethods": true
-  },
-  {
-    "name": "org.mjsip.sip.message.SipMessageFactory",
-    "allDeclaredMethods": true
-  },
-  {
-    "name": "org.mjsip.sip.transaction.InviteTransactionClient",
-    "allDeclaredFields": true,
-    "allDeclaredMethods": true
-  },
-  {
-    "name": "org.mjsip.sip.transaction.TransactionClient",
-    "allDeclaredFields": true,
-    "allDeclaredMethods": true
-  },
-  {
-    "name": "org.mjsip.sip.transaction.Transaction",
-    "allDeclaredFields": true,
-    "allDeclaredMethods": true
-  }
 ]
