@@ -66,7 +66,7 @@ class SipClientMainNativeIT {
 		int calleePort = freePort();
 
 		AtomicBoolean registered = new AtomicBoolean();
-		RegisteredCallee callee = registerCallee(calleePort, "natcallee", registered, call -> {
+		RegisteredCallee callee = RegisteredCallee.register(calleePort, "natcallee", registered, call -> {
 			System.err.println("NATCALLEE: received INVITE, accepting");
 			System.err.flush();
 			call.accept(call.getLocalSessionDescriptor());
@@ -157,7 +157,7 @@ class SipClientMainNativeIT {
 		int calleePort = freePort();
 
 		AtomicBoolean registered = new AtomicBoolean();
-		RegisteredCallee callee = registerCallee(calleePort, "natcalleerefuse", registered, call -> {
+		RegisteredCallee callee = RegisteredCallee.register(calleePort, "natcalleerefuse", registered, call -> {
 			System.err.println("NATCALLEEREFUSE: received INVITE, refusing");
 			System.err.flush();
 			call.refuse();
@@ -181,7 +181,7 @@ class SipClientMainNativeIT {
 		int calleePort = freePort();
 
 		AtomicBoolean registered = new AtomicBoolean();
-		RegisteredCallee callee = registerCallee(calleePort, "natcalleetimeout", registered, call -> {
+		RegisteredCallee callee = RegisteredCallee.register(calleePort, "natcalleetimeout", registered, call -> {
 			System.err.println("NATCALLEETIMEOUT: received INVITE, ignoring");
 			System.err.flush();
 		});
@@ -527,39 +527,7 @@ class SipClientMainNativeIT {
 		}
 	}
 
-	private RegisteredCallee registerCallee(int port, String user, AtomicBoolean registered, CalleeAction action) {
-		SchedulerConfig schedConfig = new SchedulerConfig();
-		SipConfig config = new SipConfig();
-		config.setTransportProtocols(new String[] { "udp" });
-		config.setHostPort(port);
-		config.setViaAddrIPv4("127.0.0.1");
-		config.setTransactionTimeout(5000);
-		config.setForceRport(true);
-		config.normalize();
-
-		SipProvider provider = new SipProvider(config, new ConfiguredScheduler(schedConfig));
-
-		sendRegister(provider, REGISTRAR_HOST, KAMAILIO_PORT, user, "127.0.0.1", port, registered);
-
-		SdpMessage calleeSdp = SdpMessage.createSdpMessage(user, "0.0.0.0");
-		ExtendedCall calleeCall = new ExtendedCall(provider,
-				new SipUser(
-						new NameAddress(new SipURI(user, "127.0.0.1")),
-						new NameAddress(new SipURI(user, "127.0.0.1", port))),
-				new CallListenerAdapter() {
-					@Override
-					public void onCallInvite(Call call, NameAddress callee, NameAddress caller,
-							SdpMessage sdp, SipMessage invite) {
-						action.onInvite(call);
-					}
-				});
-		calleeCall.setLocalSessionDescriptor(calleeSdp);
-		calleeCall.listen();
-
-		return new RegisteredCallee(calleeCall, provider);
-	}
-
-	private void sendRegister(SipProvider provider, String registrarHost, int registrarPort,
+	private static void sendRegister(SipProvider provider, String registrarHost, int registrarPort,
 			String user, String host, int contactPort, AtomicBoolean registered) {
 
 		GenericURI requestUri = new SipURI(registrarHost, registrarPort);
@@ -594,6 +562,38 @@ class SipClientMainNativeIT {
 	}
 
 	private record RegisteredCallee(ExtendedCall call, SipProvider provider) {
+		static RegisteredCallee register(int port, String user, AtomicBoolean registered, CalleeAction action) {
+			SchedulerConfig schedConfig = new SchedulerConfig();
+			SipConfig config = new SipConfig();
+			config.setTransportProtocols(new String[] { "udp" });
+			config.setHostPort(port);
+			config.setViaAddrIPv4("127.0.0.1");
+			config.setTransactionTimeout(5000);
+			config.setForceRport(true);
+			config.normalize();
+
+			SipProvider provider = new SipProvider(config, new ConfiguredScheduler(schedConfig));
+
+			sendRegister(provider, REGISTRAR_HOST, KAMAILIO_PORT, user, "127.0.0.1", port, registered);
+
+			SdpMessage calleeSdp = SdpMessage.createSdpMessage(user, "0.0.0.0");
+			ExtendedCall calleeCall = new ExtendedCall(provider,
+					new SipUser(
+							new NameAddress(new SipURI(user, "127.0.0.1")),
+							new NameAddress(new SipURI(user, "127.0.0.1", port))),
+					new CallListenerAdapter() {
+						@Override
+						public void onCallInvite(Call call, NameAddress callee, NameAddress caller,
+								SdpMessage sdp, SipMessage invite) {
+							action.onInvite(call);
+						}
+					});
+			calleeCall.setLocalSessionDescriptor(calleeSdp);
+			calleeCall.listen();
+
+			return new RegisteredCallee(calleeCall, provider);
+		}
+
 		void hangup() {
 			call.hangup();
 		}

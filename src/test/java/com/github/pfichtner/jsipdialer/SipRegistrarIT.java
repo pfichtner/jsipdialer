@@ -65,7 +65,7 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		RegisteredCallee callee = registerCallee(calleePort, "callee", call -> {
+		RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee", call -> {
 			System.err.println("CALLEE: received INVITE, accepting");
 			System.err.flush();
 			call.accept(call.getLocalSessionDescriptor());
@@ -88,7 +88,7 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		RegisteredCallee callee = registerCallee(calleePort, "callee7", call -> {
+		RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee7", call -> {
 			System.err.println("CALLEE7: received INVITE, accepting then BYE");
 			System.err.flush();
 			call.accept(call.getLocalSessionDescriptor());
@@ -179,7 +179,7 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		RegisteredCallee callee = registerCallee(calleePort, "callee8", call -> {
+		RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee8", call -> {
 			System.err.println("CALLEE8: received INVITE, accepting (caller will timeout)");
 			System.err.flush();
 			call.accept(call.getLocalSessionDescriptor());
@@ -202,7 +202,7 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		RegisteredCallee callee = registerCallee(calleePort, "callee9", call -> {
+		RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee9", call -> {
 			System.err.println("CALLEE9: received INVITE, refusing");
 			System.err.flush();
 			call.refuse();
@@ -233,7 +233,7 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		RegisteredCallee callee = registerCallee(calleePort, "callee11", call -> {
+		RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee11", call -> {
 			System.err.println("CALLEE11: received INVITE, ignoring");
 			System.err.flush();
 		});
@@ -479,39 +479,6 @@ class SipRegistrarIT {
 		}
 	}
 
-	private RegisteredCallee registerCallee(int port, String user, CalleeAction action) {
-		SchedulerConfig schedConfig = new SchedulerConfig();
-		SipConfig config = new SipConfig();
-		config.setTransportProtocols(new String[] { "udp" });
-		config.setHostPort(port);
-		config.setViaAddrIPv4("127.0.0.1");
-		config.setTransactionTimeout(5000);
-		config.setForceRport(true);
-		config.normalize();
-
-		SipProvider provider = new SipProvider(config, new ConfiguredScheduler(schedConfig));
-
-		AtomicBoolean registered = new AtomicBoolean();
-		sendRegister(provider, REGISTRAR_HOST, KAMAILIO_PORT, user, "127.0.0.1", port, registered);
-
-		SdpMessage calleeSdp = SdpMessage.createSdpMessage(user, "0.0.0.0");
-		ExtendedCall calleeCall = new ExtendedCall(provider,
-				new SipUser(
-						new NameAddress(new SipURI(user, "127.0.0.1")),
-						new NameAddress(new SipURI(user, "127.0.0.1", port))),
-				new CallListenerAdapter() {
-					@Override
-					public void onCallInvite(Call call, NameAddress callee, NameAddress caller,
-							SdpMessage sdp, SipMessage invite) {
-						action.onInvite(call);
-					}
-				});
-		calleeCall.setLocalSessionDescriptor(calleeSdp);
-		calleeCall.listen();
-
-		return new RegisteredCallee(registered, calleeCall, provider);
-	}
-
 	private CallService createCaller(int port, String destination, int timeoutSeconds) {
 		return new CallService(
 				REGISTRAR_HOST, KAMAILIO_PORT,
@@ -527,6 +494,39 @@ class SipRegistrarIT {
 	}
 
 	private record RegisteredCallee(AtomicBoolean registered, ExtendedCall call, SipProvider provider) {
+		static RegisteredCallee register(int port, String user, CalleeAction action) {
+			SchedulerConfig schedConfig = new SchedulerConfig();
+			SipConfig config = new SipConfig();
+			config.setTransportProtocols(new String[] { "udp" });
+			config.setHostPort(port);
+			config.setViaAddrIPv4("127.0.0.1");
+			config.setTransactionTimeout(5000);
+			config.setForceRport(true);
+			config.normalize();
+
+			SipProvider provider = new SipProvider(config, new ConfiguredScheduler(schedConfig));
+
+			AtomicBoolean registered = new AtomicBoolean();
+			sendRegister(provider, REGISTRAR_HOST, KAMAILIO_PORT, user, "127.0.0.1", port, registered);
+
+			SdpMessage calleeSdp = SdpMessage.createSdpMessage(user, "0.0.0.0");
+			ExtendedCall calleeCall = new ExtendedCall(provider,
+					new SipUser(
+							new NameAddress(new SipURI(user, "127.0.0.1")),
+							new NameAddress(new SipURI(user, "127.0.0.1", port))),
+					new CallListenerAdapter() {
+						@Override
+						public void onCallInvite(Call call, NameAddress callee, NameAddress caller,
+								SdpMessage sdp, SipMessage invite) {
+							action.onInvite(call);
+						}
+					});
+			calleeCall.setLocalSessionDescriptor(calleeSdp);
+			calleeCall.listen();
+
+			return new RegisteredCallee(registered, calleeCall, provider);
+		}
+
 		void awaitRegistration() {
 			await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
 		}
@@ -540,7 +540,7 @@ class SipRegistrarIT {
 		}
 	}
 
-	private void sendRegister(SipProvider provider, String registrarHost, int registrarPort,
+	private static void sendRegister(SipProvider provider, String registrarHost, int registrarPort,
 			String user, String host, int contactPort, AtomicBoolean registered) {
 
 		GenericURI requestUri = new SipURI(registrarHost, registrarPort);
