@@ -73,13 +73,79 @@ class SipClientMainNativeIT {
 		});
 		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
 
+		long start = System.currentTimeMillis();
 		ProcessResult result = runCaller(callerProcessBuilder("natcallee", 10));
+		long elapsed = System.currentTimeMillis() - start;
 
 		assertThat(result.exited()).as("Process should exit within timeout").isTrue();
 		assertThat(result.exitValue()).as("Exit code should be 0 (call accepted)%n%s", result.output()).isZero();
+		assertThat(elapsed).as("Process should exit quickly when callee accepts, not wait for full timeout")
+				.isLessThan(8000);
 
 		callee.hangup();
 		callee.halt();
+	}
+
+	@Test
+	void acceptedDoesNotSendCancel() throws Exception {
+		int calleePort = freePort();
+		String calleeUser = "natcalleenocancel";
+
+		AtomicBoolean registered = new AtomicBoolean();
+		AtomicBoolean cancelReceived = new AtomicBoolean();
+
+		SchedulerConfig schedConfig = new SchedulerConfig();
+		SipConfig config = new SipConfig();
+		config.setTransportProtocols(new String[] { "udp" });
+		config.setHostPort(calleePort);
+		config.setViaAddrIPv4("127.0.0.1");
+		config.setTransactionTimeout(5000);
+		config.setForceRport(true);
+		config.normalize();
+
+		SipProvider calleeProvider = new SipProvider(config, new ConfiguredScheduler(schedConfig));
+
+		calleeProvider.addPromiscuousListener(new SipProviderListener() {
+			@Override
+			public void onReceivedMessage(SipProvider p, SipMessage msg) {
+				if (msg.isRequest() && msg.isCancel()) {
+					System.err.println("NATCALLEENOCANCEL: ERROR - received CANCEL after accepting!");
+					System.err.flush();
+					cancelReceived.set(true);
+				}
+			}
+		});
+
+		sendRegister(calleeProvider, REGISTRAR_HOST, KAMAILIO_PORT, calleeUser, "127.0.0.1", calleePort, registered);
+
+		SdpMessage calleeSdp = SdpMessage.createSdpMessage(calleeUser, "0.0.0.0");
+		ExtendedCall calleeCall = new ExtendedCall(calleeProvider,
+				new SipUser(
+						new NameAddress(new SipURI(calleeUser, "127.0.0.1")),
+						new NameAddress(new SipURI(calleeUser, "127.0.0.1", calleePort))),
+				new CallListenerAdapter() {
+					@Override
+					public void onCallInvite(Call call, NameAddress callee, NameAddress caller,
+							SdpMessage sdp, SipMessage invite) {
+						System.err.println("NATCALLEENOCANCEL: received INVITE, accepting");
+						System.err.flush();
+						call.accept(call.getLocalSessionDescriptor());
+					}
+				});
+		calleeCall.setLocalSessionDescriptor(calleeSdp);
+		calleeCall.listen();
+
+		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
+
+		ProcessResult result = runCaller(callerProcessBuilder(calleeUser, 10));
+
+		assertThat(result.exited()).as("Process should exit within timeout").isTrue();
+		assertThat(result.exitValue()).as("Exit code should be 0 (call accepted)%n%s", result.output()).isZero();
+		assertThat(cancelReceived)
+				.as("Callee should NOT receive CANCEL when call was accepted")
+				.isFalse();
+
+		calleeProvider.halt();
 	}
 
 	@Test
@@ -94,10 +160,14 @@ class SipClientMainNativeIT {
 		});
 		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
 
+		long start = System.currentTimeMillis();
 		ProcessResult result = runCaller(callerProcessBuilder("natcalleerefuse", 10));
+		long elapsed = System.currentTimeMillis() - start;
 
 		assertThat(result.exited()).as("Process should exit within timeout").isTrue();
 		assertThat(result.exitValue()).as("Exit code should be 1 (call refused)%n%s", result.output()).isEqualTo(1);
+		assertThat(elapsed).as("Process should exit quickly when callee refuses, not wait for full timeout")
+				.isLessThan(8000);
 
 		callee.halt();
 	}

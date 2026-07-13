@@ -40,6 +40,7 @@ public class CallService {
 	private volatile boolean callAccepted;
 	private volatile String reason;
 	private volatile boolean terminated;
+	private volatile boolean remoteResponded;
 
 	private ExtendedCall call;
 	private SipProvider sipProvider;
@@ -97,6 +98,7 @@ public class CallService {
 			@Override
 			public void onCallAccepted(Call call, SdpMessage sdp, SipMessage resp) {
 				callAccepted = true;
+				remoteResponded = true;
 				success = true;
 				CallService.this.reason = "OK";
 				latch.countDown();
@@ -104,6 +106,7 @@ public class CallService {
 
 			@Override
 			public void onCallRefused(Call call, String reason, SipMessage resp) {
+				remoteResponded = true;
 				success = false;
 				CallService.this.reason = reason;
 				latch.countDown();
@@ -111,6 +114,7 @@ public class CallService {
 
 			@Override
 			public void onCallRedirected(Call call, String reason, java.util.Vector contactList, SipMessage resp) {
+				remoteResponded = true;
 				success = false;
 				CallService.this.reason = "Redirected: " + reason;
 				latch.countDown();
@@ -125,16 +129,19 @@ public class CallService {
 
 			@Override
 			public void onCallCancel(Call call, SipMessage cancel) {
+				remoteResponded = true;
 				latch.countDown();
 			}
 
 			@Override
 			public void onCallBye(Call call, SipMessage bye) {
+				remoteResponded = true;
 				latch.countDown();
 			}
 
 			@Override
 			public void onCallClosed(Call call, SipMessage resp) {
+				remoteResponded = true;
 				latch.countDown();
 			}
 		};
@@ -190,7 +197,16 @@ public class CallService {
 			return;
 		}
 		terminated = true;
-		sendCancel();
+		// Only send CANCEL if the remote hasn't responded yet (INVITE still pending).
+		// If the callee accepted, refused, cancelled, sent BYE, or the call was closed,
+		// remoteResponded is true and sending a CANCEL would be wrong — it would tear
+		// down an established call or send a redundant CANCEL for an already-terminated
+		// transaction. onCallTimeout does NOT set remoteResponded because the SIP
+		// transaction timeout means the callee never responded, so we still need to
+		// send CANCEL to stop the callee from ringing.
+		if (!remoteResponded) {
+			sendCancel();
+		}
 	}
 
 	// We build the CANCEL manually rather than calling InviteDialog.cancel() or
