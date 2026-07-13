@@ -48,7 +48,7 @@ jobs:
         if: always()
         with:
           name: JUnit Tests (${{ matrix.os }})
-          path: target/*-reports/*.xml
+          path: target/*-reports/TEST-*.xml
           reporter: java-junit
       - name: Compress and move files
         run: |
