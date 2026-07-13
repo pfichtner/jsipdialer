@@ -73,6 +73,14 @@ public class CallService {
 		sipConfig.normalize();
 
 		SchedulerConfig schedulerConfig = new SchedulerConfig();
+		// Override sendMessage to capture the actual INVITE that goes on the wire.
+		// mjSIP's TransactionClient.request() replaces the Via header with a new branch
+		// (via SipProvider.pickBranch()) before sending, so the SipMessage held by
+		// ExtendedCall/InviteDialog has a different branch than what was actually sent.
+		// When we later build a CANCEL on timeout, it must carry the same Via branch as
+		// the wire INVITE — otherwise Kamailio rejects it with "RFC3261 transaction
+		// matching failed". Capturing the message here is the simplest way to get the
+		// correct branch without reflection into Transaction internals.
 		sipProvider = new SipProvider(sipConfig, new ConfiguredScheduler(schedulerConfig)) {
 			@Override
 			public ConnectionId sendMessage(SipMessage msg) {
@@ -185,6 +193,14 @@ public class CallService {
 		sendCancel();
 	}
 
+	// We build the CANCEL manually rather than calling InviteDialog.cancel() or
+	// hangup() because: (1) cancel() only sends when the transaction is in
+	// PROCEEDING state (after a 1xx response) — if the callee silently ignores
+	// the INVITE, the transaction is still in CALLING state and cancel() does
+	// nothing; (2) createCancelRequest() adds a duplicate Via header, and
+	// TransactionClient would replace the branch again, causing the same
+	// branch-mismatch problem. Building from the captured wire INVITE ensures
+	// the CANCEL carries the exact Via branch Kamailio expects.
 	private void sendCancel() {
 		SipMessage invite = sentInvite;
 		if (invite == null) {
