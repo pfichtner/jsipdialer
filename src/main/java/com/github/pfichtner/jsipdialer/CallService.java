@@ -21,6 +21,7 @@ import org.mjsip.sip.message.SipMethods;
 import org.mjsip.sip.provider.ConnectionId;
 import org.mjsip.sip.provider.SipConfig;
 import org.mjsip.sip.provider.SipProvider;
+import org.mjsip.sip.provider.SipProviderListener;
 import org.mjsip.time.ConfiguredScheduler;
 import org.mjsip.time.SchedulerConfig;
 
@@ -43,6 +44,7 @@ public class CallService {
 	private volatile boolean remoteResponded;
 
 	private ExtendedCall call;
+	private CountDownLatch latch;
 	private SipProvider sipProvider;
 	private volatile SipMessage sentInvite;
 
@@ -93,10 +95,30 @@ public class CallService {
 		};
 
 		CountDownLatch latch = new CountDownLatch(1);
+		this.latch = latch;
+
+		// Log incoming SIP messages to stderr for debugging.
+		// Promiscuous listeners fire BEFORE transaction/dialog listeners,
+		// so we see everything the SIP provider receives.
+		sipProvider.addPromiscuousListener(new SipProviderListener() {
+			@Override
+			public void onReceivedMessage(SipProvider sipProvider, SipMessage msg) {
+				if (msg.isResponse()) {
+					int code = msg.getStatusLine().getCode();
+					System.err.println("SIP RECV: " + code + " " + msg.getStatusLine().getReason());
+				} else {
+					System.err.println("SIP RECV: " + msg.getRequestLine().getMethod() + " "
+							+ msg.getRequestLine().getAddress());
+				}
+				System.err.flush();
+			}
+		});
 
 		var listener = new CallListenerAdapter() {
 			@Override
 			public void onCallAccepted(Call call, SdpMessage sdp, SipMessage resp) {
+				System.err.println("CALL: onCallAccepted");
+				System.err.flush();
 				callAccepted = true;
 				remoteResponded = true;
 				success = true;
@@ -106,6 +128,8 @@ public class CallService {
 
 			@Override
 			public void onCallRefused(Call call, String reason, SipMessage resp) {
+				System.err.println("CALL: onCallRefused: " + reason);
+				System.err.flush();
 				remoteResponded = true;
 				success = false;
 				CallService.this.reason = reason;
@@ -114,6 +138,8 @@ public class CallService {
 
 			@Override
 			public void onCallRedirected(Call call, String reason, java.util.Vector contactList, SipMessage resp) {
+				System.err.println("CALL: onCallRedirected: " + reason);
+				System.err.flush();
 				remoteResponded = true;
 				success = false;
 				CallService.this.reason = "Redirected: " + reason;
@@ -122,6 +148,8 @@ public class CallService {
 
 			@Override
 			public void onCallTimeout(Call call) {
+				System.err.println("CALL: onCallTimeout");
+				System.err.flush();
 				success = false;
 				CallService.this.reason = "Request Timeout";
 				latch.countDown();
@@ -129,18 +157,24 @@ public class CallService {
 
 			@Override
 			public void onCallCancel(Call call, SipMessage cancel) {
+				System.err.println("CALL: onCallCancel");
+				System.err.flush();
 				remoteResponded = true;
 				latch.countDown();
 			}
 
 			@Override
 			public void onCallBye(Call call, SipMessage bye) {
+				System.err.println("CALL: onCallBye");
+				System.err.flush();
 				remoteResponded = true;
 				latch.countDown();
 			}
 
 			@Override
 			public void onCallClosed(Call call, SipMessage resp) {
+				System.err.println("CALL: onCallClosed");
+				System.err.flush();
 				remoteResponded = true;
 				latch.countDown();
 			}
@@ -202,8 +236,18 @@ public class CallService {
 		// transaction timeout means the callee never responded, so we still need to
 		// send CANCEL to stop the callee from ringing.
 		if (!remoteResponded) {
+			System.err.println("CALL: terminating — sending CANCEL (remote did not respond)");
+			System.err.flush();
 			sendCancel();
+		} else {
+			System.err.println("CALL: terminating — remote already responded, no CANCEL needed");
+			System.err.flush();
 		}
+		// Release the latch in case no SIP callback fired (e.g., proxy doesn't
+		// route the response back to us). Without this, call() would block
+		// until the latch timeout (timeoutSeconds + 5), which could be much
+		// longer than the actual timeout.
+		latch.countDown();
 	}
 
 	// We build the CANCEL manually rather than calling InviteDialog.cancel() or

@@ -350,7 +350,124 @@ class SipRegistrarIT {
 
 		CallService callService = createCaller(callerPort, calleeUser, 3);
 		assertThat(callService.call()).isFalse();
+		await().atMost(5, TimeUnit.SECONDS).untilTrue(cancelReceived);
 		assertThat(cancelReceived).as("Callee should have received CANCEL on timeout").isTrue();
+
+		calleeProvider.halt();
+	}
+
+	@Test
+	void ringingThenAccept() throws Exception {
+		int calleePort = freePort();
+		int callerPort = freePort();
+		String calleeUser = "calleeRinging";
+
+		AtomicBoolean registered = new AtomicBoolean();
+
+		SchedulerConfig schedConfig = new SchedulerConfig();
+		SipConfig config = new SipConfig();
+		config.setTransportProtocols(new String[] { "udp" });
+		config.setHostPort(calleePort);
+		config.setViaAddrIPv4("127.0.0.1");
+		config.setTransactionTimeout(5000);
+		config.setForceRport(true);
+		config.normalize();
+
+		SipProvider calleeProvider = new SipProvider(config, new ConfiguredScheduler(schedConfig));
+
+		sendRegister(calleeProvider, REGISTRAR_HOST, KAMAILIO_PORT, calleeUser, "127.0.0.1", calleePort, registered);
+
+		SdpMessage calleeSdp = SdpMessage.createSdpMessage(calleeUser, "0.0.0.0");
+		ExtendedCall calleeCall = new ExtendedCall(calleeProvider,
+				new SipUser(
+						new NameAddress(new SipURI(calleeUser, "127.0.0.1")),
+						new NameAddress(new SipURI(calleeUser, "127.0.0.1", calleePort))),
+				new CallListenerAdapter() {
+					@Override
+					public void onCallInvite(Call call, NameAddress callee, NameAddress caller,
+							SdpMessage sdp, SipMessage invite) {
+						System.err.println("RINGING: received INVITE, sending 180 Ringing then accepting after 2s");
+						System.err.flush();
+						SipMessage resp180 = calleeProvider.messageFactory()
+								.createResponse(invite, 180, "Ringing", null);
+						calleeProvider.sendMessage(resp180);
+						executor.submit(() -> {
+							try { Thread.sleep(2000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+							System.err.println("RINGING: accepting now");
+							System.err.flush();
+							call.accept(call.getLocalSessionDescriptor());
+						});
+					}
+				});
+		calleeCall.setLocalSessionDescriptor(calleeSdp);
+		calleeCall.listen();
+
+		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
+
+		CallService callService = createCaller(callerPort, calleeUser, 10);
+		long start = System.currentTimeMillis();
+		assertThat(callService.call()).isTrue();
+		long elapsed = System.currentTimeMillis() - start;
+		assertThat(elapsed).as("call() should return quickly after 180+200, not wait for timeout")
+				.isLessThan(8000);
+
+		calleeProvider.halt();
+	}
+
+	@Test
+	void ringingThenDecline() throws Exception {
+		int calleePort = freePort();
+		int callerPort = freePort();
+		String calleeUser = "calleeRingingDecline";
+
+		AtomicBoolean registered = new AtomicBoolean();
+
+		SchedulerConfig schedConfig = new SchedulerConfig();
+		SipConfig config = new SipConfig();
+		config.setTransportProtocols(new String[] { "udp" });
+		config.setHostPort(calleePort);
+		config.setViaAddrIPv4("127.0.0.1");
+		config.setTransactionTimeout(5000);
+		config.setForceRport(true);
+		config.normalize();
+
+		SipProvider calleeProvider = new SipProvider(config, new ConfiguredScheduler(schedConfig));
+
+		sendRegister(calleeProvider, REGISTRAR_HOST, KAMAILIO_PORT, calleeUser, "127.0.0.1", calleePort, registered);
+
+		SdpMessage calleeSdp = SdpMessage.createSdpMessage(calleeUser, "0.0.0.0");
+		ExtendedCall calleeCall = new ExtendedCall(calleeProvider,
+				new SipUser(
+						new NameAddress(new SipURI(calleeUser, "127.0.0.1")),
+						new NameAddress(new SipURI(calleeUser, "127.0.0.1", calleePort))),
+				new CallListenerAdapter() {
+					@Override
+					public void onCallInvite(Call call, NameAddress callee, NameAddress caller,
+							SdpMessage sdp, SipMessage invite) {
+						System.err.println("RINGINGDECL: received INVITE, sending 180 Ringing then declining after 2s");
+						System.err.flush();
+						SipMessage resp180 = calleeProvider.messageFactory()
+								.createResponse(invite, 180, "Ringing", null);
+						calleeProvider.sendMessage(resp180);
+						executor.submit(() -> {
+							try { Thread.sleep(2000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+							System.err.println("RINGINGDECL: declining now");
+							System.err.flush();
+							call.refuse();
+						});
+					}
+				});
+		calleeCall.setLocalSessionDescriptor(calleeSdp);
+		calleeCall.listen();
+
+		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
+
+		CallService callService = createCaller(callerPort, calleeUser, 10);
+		long start = System.currentTimeMillis();
+		assertThat(callService.call()).isFalse();
+		long elapsed = System.currentTimeMillis() - start;
+		assertThat(elapsed).as("call() should return quickly after 180+4xx, not wait for timeout")
+				.isLessThan(8000);
 
 		calleeProvider.halt();
 	}
