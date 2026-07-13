@@ -526,17 +526,7 @@ class SipRegistrarIT {
 		void onInvite(Call call);
 	}
 
-	private static class RegisteredCallee {
-		private final AtomicBoolean registered;
-		private final ExtendedCall call;
-		private final SipProvider provider;
-
-		RegisteredCallee(AtomicBoolean registered, ExtendedCall call, SipProvider provider) {
-			this.registered = registered;
-			this.call = call;
-			this.provider = provider;
-		}
-
+	private record RegisteredCallee(AtomicBoolean registered, ExtendedCall call, SipProvider provider) {
 		void awaitRegistration() {
 			await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
 		}

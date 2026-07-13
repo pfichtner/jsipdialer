@@ -52,8 +52,8 @@ public class SipClientMain {
 			var callerName = cmdLine.getOptionValue(CALLER_NAME);
 			var timeout = parseInt(cmdLine.getOptionValue(TIMEOUT, String.valueOf(DEFAULT_TIMEOUT)));
 
-			var callService = createCallService(serverAddress, serverPort, sipConfig.getUsername(),
-					sipConfig.getPassword(), destinationNumber, callerName, timeout, "udp");
+			var callService = createCallService(serverAddress, serverPort, sipConfig.username(),
+					sipConfig.password(), destinationNumber, callerName, timeout, "udp");
 			if (!callService.call()) {
 				System.err.println("Call failed: " + callService.getReason());
 				return 1;

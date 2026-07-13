@@ -593,15 +593,7 @@ class SipClientMainNativeIT {
 		void onInvite(Call call);
 	}
 
-	private static class RegisteredCallee {
-		private final ExtendedCall call;
-		private final SipProvider provider;
-
-		RegisteredCallee(ExtendedCall call, SipProvider provider) {
-			this.call = call;
-			this.provider = provider;
-		}
-
+	private record RegisteredCallee(ExtendedCall call, SipProvider provider) {
 		void hangup() {
 			call.hangup();
 		}
