@@ -24,7 +24,7 @@ You can download native images (executables) from the [releases](https://github.
 
 At the moment, native images are built for Linux x86-64 only. Linux ARM64 builds (for example, for Raspberry Pi systems) are currently not available because the required runners are not provided by GitHub and would require a self-hosted runner.
 
-Of course, you can also use jsipdialer without a native image. In that case, you need a JRE 17 or newer installed and can run:
+Of course, you can also use jsipdialer without a native image. In that case, you need a JRE 21 or newer installed and can run:
 
 ```sh
 java -jar jsipdialer.jar
