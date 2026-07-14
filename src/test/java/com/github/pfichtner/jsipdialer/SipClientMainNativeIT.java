@@ -3,11 +3,8 @@ package com.github.pfichtner.jsipdialer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.ServerSocket;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -178,24 +175,12 @@ class SipClientMainNativeIT {
 
 			Process process = pb.start();
 
-			// Drain output in background so the process does not block on a full pipe
-			// and so we can await the INVITE arriving at the callee.
-			ByteArrayOutputStream outBuf = new ByteArrayOutputStream();
-			Thread outReader = new Thread(() -> {
-				try (InputStream in = process.getInputStream()) {
-					in.transferTo(outBuf);
-				} catch (IOException ignored) {
-				}
-			});
-			outReader.start();
-
-			// The caller was just started; wait until its INVITE actually reaches
-			// the callee (which then sends 183 and refuses).
+			// Wait until the INVITE actually reaches the callee (which then
+			// sends 183 and refuses), then drain output and wait for exit.
 			callee.awaitInvite(10, TimeUnit.SECONDS);
 
+			String output = new String(process.getInputStream().readAllBytes());
 			boolean exited = process.waitFor(30, TimeUnit.SECONDS);
-			outReader.join();
-			String output = outBuf.toString(StandardCharsets.UTF_8);
 
 			assertThat(exited).as("Process should exit within timeout").isTrue();
 			assertThat(process.exitValue()).as("Exit code should be 1 (call refused after provisional)%n%s", output)
