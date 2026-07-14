@@ -25,7 +25,6 @@ import org.mjsip.sip.call.SipUser;
 import org.mjsip.sip.message.SipMessage;
 import org.mjsip.sip.provider.SipConfig;
 import org.mjsip.sip.provider.SipProvider;
-import org.mjsip.sip.provider.SipProviderListener;
 import org.mjsip.time.ConfiguredScheduler;
 import org.mjsip.time.SchedulerConfig;
 import org.testcontainers.containers.GenericContainer;
@@ -124,14 +123,11 @@ class SipRegistrarIT {
 
 		SipProvider calleeProvider = new SipProvider(config, new ConfiguredScheduler(schedConfig));
 
-		calleeProvider.addPromiscuousListener(new SipProviderListener() {
-			@Override
-			public void onReceivedMessage(SipProvider p, SipMessage msg) {
-				if (msg.isRequest() && msg.isCancel()) {
-					System.err.println("CALLEENOCANCEL: ERROR - received CANCEL after accepting!");
-					System.err.flush();
-					cancelReceived.set(true);
-				}
+		calleeProvider.addPromiscuousListener((p, msg) -> {
+			if (msg.isRequest() && msg.isCancel()) {
+				System.err.println("CALLEENOCANCEL: ERROR - received CANCEL after accepting!");
+				System.err.flush();
+				cancelReceived.set(true);
 			}
 		});
 
@@ -308,14 +304,11 @@ class SipRegistrarIT {
 		// Promiscuous listeners fire BEFORE specific listeners (SipProvider line 923 vs 932),
 		// so we can detect the CANCEL even though InviteDialog.onReceivedMessage() has the
 		// CANCEL handler commented out (responds with 405 Method Not Allowed).
-		calleeProvider.addPromiscuousListener(new SipProviderListener() {
-			@Override
-			public void onReceivedMessage(SipProvider p, SipMessage msg) {
-				if (msg.isRequest() && msg.isCancel()) {
-					System.err.println("CALLEECANCEL: detected CANCEL via promiscuous listener!");
-					System.err.flush();
-					cancelReceived.set(true);
-				}
+		calleeProvider.addPromiscuousListener((p, msg) -> {
+			if (msg.isRequest() && msg.isCancel()) {
+				System.err.println("CALLEECANCEL: detected CANCEL via promiscuous listener!");
+				System.err.flush();
+				cancelReceived.set(true);
 			}
 		});
 
