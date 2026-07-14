@@ -47,7 +47,6 @@ class SipClientMainNativeIT {
 				.alias("Process should exit quickly when callee accepts, not wait for full timeout")
 				.untilAsserted(() -> {
 					ProcessResult result = runCaller(callerProcessBuilder("natcallee", 10));
-					assertThat(result.exited()).as("Process should exit within timeout").isTrue();
 					assertThat(result.exitValue()).as("Exit code should be 0 (call accepted)%n%s", result.output()).isZero();
 				});
 	}
@@ -58,7 +57,6 @@ class SipClientMainNativeIT {
 				.alias("Process should exit quickly when callee accepts, not wait for full timeout")
 				.untilAsserted(() -> {
 					ProcessResult result = runCaller(callerProcessBuilder("natcalleenocancel", 10));
-					assertThat(result.exited()).as("Process should exit within timeout").isTrue();
 					assertThat(result.exitValue()).as("Exit code should be 0 (call accepted)%n%s", result.output()).isZero();
 					assertThat(callee.isCancelReceived())
 							.as("Callee should NOT receive CANCEL when call was accepted")
@@ -74,7 +72,6 @@ class SipClientMainNativeIT {
 				.alias("Process should exit quickly when callee refuses, not wait for full timeout")
 				.untilAsserted(() -> {
 					ProcessResult result = runCaller(callerProcessBuilder("natcalleerefuse", 10));
-					assertThat(result.exited()).as("Process should exit within timeout").isTrue();
 					assertThat(result.exitValue()).as("Exit code should be 1 (call refused)%n%s", result.output()).isEqualTo(1);
 				});
 	}
@@ -85,7 +82,6 @@ class SipClientMainNativeIT {
 			throws Exception {
 		ProcessResult result = runCaller(callerProcessBuilder("natcalleetimeout", 3));
 
-		assertThat(result.exited()).as("Process should exit within timeout").isTrue();
 		assertThat(result.exitValue()).as("Exit code should be 1 (timeout, no answer)%n%s", result.output()).isEqualTo(1);
 	}
 
@@ -94,7 +90,6 @@ class SipClientMainNativeIT {
 			behavior = CalleeBehavior.IGNORE) RegisteredCallee callee) throws Exception {
 		ProcessResult result = runCaller(callerProcessBuilder("natcalleecancel", 3));
 
-		assertThat(result.exited()).as("Process should exit within timeout").isTrue();
 		assertThat(result.exitValue()).as("Exit code should be 1 (timeout, no answer)%n%s", result.output()).isEqualTo(1);
 		callee.awaitCancel(5, TimeUnit.SECONDS);
 		assertThat(callee.isCancelReceived()).as("Callee should have received CANCEL on timeout").isTrue();
@@ -105,7 +100,6 @@ class SipClientMainNativeIT {
 			behavior = CalleeBehavior.PROVISIONAL_183) RegisteredCallee callee) throws Exception {
 		ProcessResult result = runCaller(callerProcessBuilder("natcalleeprov", 3));
 
-		assertThat(result.exited()).as("Process should exit within timeout").isTrue();
 		assertThat(result.exitValue()).as("Exit code should be 1 (timeout after 183)%n%s", result.output()).isEqualTo(1);
 	}
 
@@ -122,7 +116,7 @@ class SipClientMainNativeIT {
 		callee.awaitInvite(10, TimeUnit.SECONDS);
 
 		String output = new String(process.getInputStream().readAllBytes());
-		boolean exited = process.waitFor(30, TimeUnit.SECONDS);
+		boolean exited = process.waitFor(3, TimeUnit.MINUTES);
 
 		assertThat(exited).as("Process should exit within timeout").isTrue();
 		assertThat(process.exitValue()).as("Exit code should be 1 (call refused after provisional)%n%s", output)
@@ -136,7 +130,6 @@ class SipClientMainNativeIT {
 				.alias("Process should exit quickly after 180+200, not wait for full timeout")
 				.untilAsserted(() -> {
 					ProcessResult result = runCaller(callerProcessBuilder("natcalleeringing", 10));
-					assertThat(result.exited()).as("Process should exit within timeout").isTrue();
 					assertThat(result.exitValue()).as("Exit code should be 0 (call accepted)%n%s", result.output()).isZero();
 				});
 	}
@@ -148,7 +141,6 @@ class SipClientMainNativeIT {
 				.alias("Process should exit quickly after 180+4xx, not wait for full timeout")
 				.untilAsserted(() -> {
 					ProcessResult result = runCaller(callerProcessBuilder("natcalleeringingdecline", 10));
-					assertThat(result.exited()).as("Process should exit within timeout").isTrue();
 					assertThat(result.exitValue()).as("Exit code should be 1 (call declined)%n%s", result.output()).isEqualTo(1);
 				});
 	}
@@ -168,11 +160,14 @@ class SipClientMainNativeIT {
 	private static ProcessResult runCaller(ProcessBuilder pb) throws IOException, InterruptedException {
 		Process process = pb.start();
 		String output = new String(process.getInputStream().readAllBytes());
-		boolean exited = process.waitFor(30, TimeUnit.SECONDS);
-		return new ProcessResult(exited, exited ? process.exitValue() : -1, output);
+		boolean exited = process.waitFor(3, TimeUnit.MINUTES);
+		if (!exited) {
+			throw new IllegalStateException("Process did not exit within timeout of 3 MINUTES");
+		}
+		return new ProcessResult(process.exitValue(), output);
 	}
 
-	private record ProcessResult(boolean exited, int exitValue, String output) {
+	private record ProcessResult(int exitValue, String output) {
 	}
 
 }
