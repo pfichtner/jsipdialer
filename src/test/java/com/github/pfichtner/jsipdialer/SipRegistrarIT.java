@@ -552,17 +552,14 @@ class SipRegistrarIT {
 				requestUri, from, to, contact, null);
 		register.addHeader(new ExpiresHeader(3600), false);
 
-		provider.addPromiscuousListener(new SipProviderListener() {
-			@Override
-			public void onReceivedMessage(SipProvider p, SipMessage msg) {
-				if (msg.isResponse() && msg.getStatusLine() != null
-						&& msg.getStatusLine().getCode() == 200) {
-					System.err.println("REGISTER: 200 OK received for " + user);
-					System.err.flush();
-					registered.set(true);
-				}
-			}
-		});
+		provider.addPromiscuousListener((p, msg) -> {
+            if (msg.isResponse() && msg.getStatusLine() != null
+                    && msg.getStatusLine().getCode() == 200) {
+                System.err.println("REGISTER: 200 OK received for " + user);
+                System.err.flush();
+                registered.set(true);
+            }
+        });
 
 		System.err.println("REGISTER: sending " + user + " to " + registrarHost + ":" + registrarPort);
 		System.err.flush();

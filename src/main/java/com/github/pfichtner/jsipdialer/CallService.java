@@ -38,13 +38,11 @@ public class CallService {
 	private final int localPort;
 
 	private volatile boolean success;
-	private volatile boolean callAccepted;
 	private volatile String reason;
 	private volatile boolean terminated;
 	private volatile boolean remoteResponded;
 
-	private ExtendedCall call;
-	private CountDownLatch latch;
+    private CountDownLatch latch;
 	private SipProvider sipProvider;
 	private volatile SipMessage sentInvite;
 
@@ -108,50 +106,46 @@ public class CallService {
 		// transaction listener — so mjSIP's onCallAccepted/onCallRefused never
 		// fire. Without this fallback, the program would wait for the full
 		// timeout instead of exiting when the callee responds.
-		sipProvider.addPromiscuousListener(new SipProviderListener() {
-			@Override
-			public void onReceivedMessage(SipProvider sipProvider, SipMessage msg) {
-				if (msg.isResponse()) {
-					int code = msg.getStatusLine().getCode();
-					String reason = msg.getStatusLine().getReason();
-					System.err.println("SIP RECV: " + code + " " + reason);
-					System.err.flush();
-					// Fallback: if we see a final response (2xx/4xx except 401/407/5xx/6xx)
-					// that matches our INVITE's Call-ID and the dialog listener
-					// hasn't already handled it, handle it here.
-					// 401/407 are auth challenges handled by ExtendedInviteDialog
-					// (which re-sends the INVITE with Authorization), so we must NOT
-					// treat them as final — doing so would exit before the re-INVITE.
-					SipMessage invite = sentInvite;
-					if (invite != null && !remoteResponded && code >= 200
-							&& code != 401 && code != 407
-							&& sameCallId(msg, invite)) {
-						System.err.println("CALL: fallback detected final response " + code);
-						System.err.flush();
-						remoteResponded = true;
-						if (code >= 200 && code < 300) {
-							success = true;
-							CallService.this.reason = "OK";
-						} else {
-							success = false;
-							CallService.this.reason = code + " " + reason;
-						}
-						latch.countDown();
-					}
-				} else {
-					System.err.println("SIP RECV: " + msg.getRequestLine().getMethod() + " "
-							+ msg.getRequestLine().getAddress());
-					System.err.flush();
-				}
-			}
-		});
+		sipProvider.addPromiscuousListener((sipProvider, msg) -> {
+            if (msg.isResponse()) {
+                int code = msg.getStatusLine().getCode();
+                String reason = msg.getStatusLine().getReason();
+                System.err.println("SIP RECV: " + code + " " + reason);
+                System.err.flush();
+                // Fallback: if we see a final response (2xx/4xx except 401/407/5xx/6xx)
+                // that matches our INVITE's Call-ID and the dialog listener
+                // hasn't already handled it, handle it here.
+                // 401/407 are auth challenges handled by ExtendedInviteDialog
+                // (which re-sends the INVITE with Authorization), so we must NOT
+                // treat them as final — doing so would exit before the re-INVITE.
+                SipMessage invite = sentInvite;
+                if (invite != null && !remoteResponded && code >= 200
+                        && code != 401 && code != 407
+                        && sameCallId(msg, invite)) {
+                    System.err.println("CALL: fallback detected final response " + code);
+                    System.err.flush();
+                    remoteResponded = true;
+                    if (code >= 200 && code < 300) {
+                        success = true;
+                        CallService.this.reason = "OK";
+                    } else {
+                        success = false;
+                        CallService.this.reason = code + " " + reason;
+                    }
+                    latch.countDown();
+                }
+            } else {
+                System.err.println("SIP RECV: " + msg.getRequestLine().getMethod() + " "
+                        + msg.getRequestLine().getAddress());
+                System.err.flush();
+            }
+        });
 
 		var listener = new CallListenerAdapter() {
 			@Override
 			public void onCallAccepted(Call call, SdpMessage sdp, SipMessage resp) {
 				System.err.println("CALL: onCallAccepted");
 				System.err.flush();
-				callAccepted = true;
 				remoteResponded = true;
 				success = true;
 				CallService.this.reason = "OK";
@@ -215,7 +209,7 @@ public class CallService {
 		SipUser sipUser = new SipUser(new NameAddress(new SipURI(username, serverAddress)), username, serverAddress,
 				password);
 
-		call = new ExtendedCall(sipProvider, sipUser, listener);
+        ExtendedCall call = new ExtendedCall(sipProvider, sipUser, listener);
 
 		Thread shutdownHook = new Thread(this::terminateCall, "sip-shutdown");
 		Runtime.getRuntime().addShutdownHook(shutdownHook);
@@ -310,7 +304,7 @@ public class CallService {
 				new CSeqHeader(inviteReq.getCSeqHeader().getSequenceNumber(), SipMethods.CANCEL));
 		cancel.setMaxForwardsHeader(new MaxForwardsHeader(70));
 		cancel.setContactHeader(inviteReq.getContactHeader());
-		cancel.setBody(null, (byte[]) null);
+		cancel.setBody(null, null);
 		return cancel;
 	}
 

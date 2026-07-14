@@ -9,12 +9,7 @@ import java.util.Optional;
 
 class KamailioLogDumperExtension implements TestWatcher {
 
-	@Override
-	public void testSuccessful(ExtensionContext context) {
-		// no-op
-	}
-
-	@Override
+    @Override
 	public void testFailed(ExtensionContext context, Throwable cause) {
 		findContainer(context).ifPresent(container -> {
 			String logs = container.getLogs();

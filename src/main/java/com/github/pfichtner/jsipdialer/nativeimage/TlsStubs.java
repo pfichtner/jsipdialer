@@ -1,7 +1,6 @@
 package com.github.pfichtner.jsipdialer.nativeimage;
 
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.Delete;
 
 @Delete

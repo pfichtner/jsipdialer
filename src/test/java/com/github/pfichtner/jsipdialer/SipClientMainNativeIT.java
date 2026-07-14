@@ -105,16 +105,13 @@ class SipClientMainNativeIT {
 
 		SipProvider calleeProvider = new SipProvider(config, new ConfiguredScheduler(schedConfig));
 
-		calleeProvider.addPromiscuousListener(new SipProviderListener() {
-			@Override
-			public void onReceivedMessage(SipProvider p, SipMessage msg) {
-				if (msg.isRequest() && msg.isCancel()) {
-					System.err.println("NATCALLEENOCANCEL: ERROR - received CANCEL after accepting!");
-					System.err.flush();
-					cancelReceived.set(true);
-				}
-			}
-		});
+		calleeProvider.addPromiscuousListener((p, msg) -> {
+            if (msg.isRequest() && msg.isCancel()) {
+                System.err.println("NATCALLEENOCANCEL: ERROR - received CANCEL after accepting!");
+                System.err.flush();
+                cancelReceived.set(true);
+            }
+        });
 
 		sendRegister(calleeProvider, REGISTRAR_HOST, KAMAILIO_PORT, calleeUser, "127.0.0.1", calleePort, registered);
 

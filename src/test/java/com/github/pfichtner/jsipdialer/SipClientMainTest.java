@@ -31,7 +31,7 @@ class SipClientMainTest {
 	private static final String ARGNAME_DESTINATION_NUMBER = SipClientMain.DESTINATION_NUMBER;
 	private static final String ARGNAME_TIMEOUT = SipClientMain.TIMEOUT;
 
-	private final class SipClientMainSpy extends SipClientMain {
+	private static final class SipClientMainSpy extends SipClientMain {
 
 		String serverAddress;
 		int serverPort;
@@ -45,7 +45,7 @@ class SipClientMainTest {
 
 		@Override
 		protected CallService createCallService(String serverAddress, int serverPort, String username,
-				String password, String destinationNumber, String callerName, int timeout, String transport) {
+				String password, String destinationNumber, String callerName, int timeout) {
 			this.serverAddress = serverAddress;
 			this.serverPort = serverPort;
 			this.username = username;
@@ -53,7 +53,7 @@ class SipClientMainTest {
 			this.destinationNumber = destinationNumber;
 			this.callerName = callerName;
 			this.timeout = timeout;
-			this.transport = transport;
+			this.transport = "udp";
 			return new CallService(null, 0, null, null, null, null, 0, null) {
 				@Override
 				public boolean call() {
@@ -64,7 +64,7 @@ class SipClientMainTest {
 
 	}
 
-	Map<String, Object> params = checkValuesAreUnique(Map.of( //
+	final Map<String, Object> params = checkValuesAreUnique(Map.of( //
 			ARGNAME_SIP_SERVER_ADDRESS, "some.server.address.local", //
 			ARGNAME_SIP_SERVER_PORT, SipClientMain.DEFAULT_SIPPORT + 1, //
 			ARGNAME_SIP_USERNAME, "someUser", //
@@ -74,7 +74,7 @@ class SipClientMainTest {
 			ARGNAME_TIMEOUT, SipClientMain.DEFAULT_TIMEOUT + 1 //
 	));
 
-	SipClientMainSpy sipClientMainSpy = new SipClientMainSpy();
+	final SipClientMainSpy sipClientMainSpy = new SipClientMainSpy();
 
 	private static <K, V> Map<K, V> checkValuesAreUnique(Map<K, V> map) {
 		var values = map.values();
@@ -90,7 +90,7 @@ class SipClientMainTest {
 	void noArgsAtAll(StdOut stdOut, StdErr stderr) throws Exception {
 		callMain();
 		assertThat(join(stderr.capturedLines()))
-				.contains("Missing required options: " + stream(requiredArgs()).collect(joining(", ")));
+				.contains("Missing required options: " + String.join(", ", requiredArgs()));
 		verifyStdoutAndStderr(stdOut, stderr);
 	}
 
@@ -165,12 +165,12 @@ class SipClientMainTest {
 	}
 
 	private void verifyStdoutAndStderr(StdOut stdout, StdErr stderr) {
-		verify(Stream.of("stderr:", stream(stderr.capturedLines()).limit(1).collect(joining("\n")), "", "stdout:",
-				join(stdout.capturedLines())).collect(joining("\n")));
+		verify(String.join("\n", "stderr:", stream(stderr.capturedLines()).limit(1).collect(joining("\n")), "", "stdout:",
+                join(stdout.capturedLines())));
 	}
 
 	private static String join(String[] capturedLines) {
-		return stream(capturedLines).collect(joining("\n"));
+		return String.join("\n", capturedLines);
 	}
 
 	private void callMain(String... args) throws Exception {

@@ -53,7 +53,7 @@ public class SipClientMain {
 			var timeout = parseInt(cmdLine.getOptionValue(TIMEOUT, String.valueOf(DEFAULT_TIMEOUT)));
 
 			var callService = createCallService(serverAddress, serverPort, sipConfig.username(),
-					sipConfig.password(), destinationNumber, callerName, timeout, "udp");
+					sipConfig.password(), destinationNumber, callerName, timeout);
 			if (!callService.call()) {
 				System.err.println("Call failed: " + callService.getReason());
 				return 1;
@@ -67,9 +67,9 @@ public class SipClientMain {
 	}
 
 	protected CallService createCallService(String serverAddress, int serverPort, String username,
-			String password, String destinationNumber, String callerName, int timeout, String transport) {
+			String password, String destinationNumber, String callerName, int timeout) {
 		return new CallService(serverAddress, serverPort, username, password,
-				destinationNumber, callerName, timeout, transport);
+				destinationNumber, callerName, timeout, "udp");
 	}
 
 	private static String binaryName() {
