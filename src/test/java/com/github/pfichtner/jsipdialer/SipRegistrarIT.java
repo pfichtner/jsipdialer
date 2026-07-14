@@ -62,12 +62,11 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee", (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee", (call, invite, respond) -> {
 			System.err.println("CALLEE: received INVITE, accepting");
 			System.err.flush();
 			call.accept(call.getLocalSessionDescriptor());
 		})) {
-			callee.awaitRegistration();
 
 			CallService callService = createCaller(callerPort, "callee", 10);
 			long start = System.currentTimeMillis();
@@ -83,7 +82,7 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee7", (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee7", (call, invite, respond) -> {
 			System.err.println("CALLEE7: received INVITE, accepting then BYE");
 			System.err.flush();
 			call.accept(call.getLocalSessionDescriptor());
@@ -92,7 +91,6 @@ class SipRegistrarIT {
 				call.hangup();
 			});
 		})) {
-			callee.awaitRegistration();
 
 			CallService callService = createCaller(callerPort, "callee7", 10);
 			long start = System.currentTimeMillis();
@@ -170,12 +168,11 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee8", (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee8", (call, invite, respond) -> {
 			System.err.println("CALLEE8: received INVITE, accepting (caller will timeout)");
 			System.err.flush();
 			call.accept(call.getLocalSessionDescriptor());
 		})) {
-			callee.awaitRegistration();
 
 			CallService callService = createCaller(callerPort, "callee8", 3);
 			long start = System.currentTimeMillis();
@@ -191,12 +188,11 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee9", (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee9", (call, invite, respond) -> {
 			System.err.println("CALLEE9: received INVITE, refusing");
 			System.err.flush();
 			call.refuse();
 		})) {
-			callee.awaitRegistration();
 
 			CallService callService = createCaller(callerPort, "callee9", 10);
 			long start = System.currentTimeMillis();
@@ -221,11 +217,10 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee11", (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee11", (call, invite, respond) -> {
 			System.err.println("CALLEE11: received INVITE, ignoring");
 			System.err.flush();
 		})) {
-			callee.awaitRegistration();
 
 			CallService callService = createCaller(callerPort, "callee11", 3);
 			assertThat(callService.call()).isFalse();

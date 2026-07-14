@@ -82,6 +82,12 @@ record RegisteredCallee(AtomicBoolean registered, AtomicBoolean cancelReceived, 
 		return new RegisteredCallee(registered, cancelReceived, inviteReceived, calleeCall, provider);
 	}
 
+	static RegisteredCallee registerAndAwait(int port, String user, CalleeAction action) {
+		RegisteredCallee callee = register(port, user, action);
+		callee.awaitRegistration();
+		return callee;
+	}
+
 	void awaitRegistration() {
 		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
 	}

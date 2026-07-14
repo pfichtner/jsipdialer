@@ -48,12 +48,11 @@ class SipClientMainNativeIT {
 	void callThroughRegistrar() throws Exception {
 		int calleePort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "natcallee", (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "natcallee", (call, invite, respond) -> {
 			System.err.println("NATCALLEE: received INVITE, accepting");
 			System.err.flush();
 			call.accept(call.getLocalSessionDescriptor());
 		})) {
-			callee.awaitRegistration();
 
 			long start = System.currentTimeMillis();
 			ProcessResult result = runCaller(callerProcessBuilder("natcallee", 10));
@@ -71,12 +70,11 @@ class SipClientMainNativeIT {
 		int calleePort = freePort();
 		String calleeUser = "natcalleenocancel";
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, calleeUser, (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, calleeUser, (call, invite, respond) -> {
 			System.err.println("NATCALLEENOCANCEL: received INVITE, accepting");
 			System.err.flush();
 			call.accept(call.getLocalSessionDescriptor());
 		})) {
-			callee.awaitRegistration();
 
 			long start = System.currentTimeMillis();
 			ProcessResult result = runCaller(callerProcessBuilder(calleeUser, 10));
@@ -96,12 +94,11 @@ class SipClientMainNativeIT {
 	void calleeRefuses() throws Exception {
 		int calleePort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "natcalleerefuse", (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "natcalleerefuse", (call, invite, respond) -> {
 			System.err.println("NATCALLEEREFUSE: received INVITE, refusing");
 			System.err.flush();
 			call.refuse();
 		})) {
-			callee.awaitRegistration();
 
 			long start = System.currentTimeMillis();
 			ProcessResult result = runCaller(callerProcessBuilder("natcalleerefuse", 10));
@@ -118,11 +115,10 @@ class SipClientMainNativeIT {
 	void timeoutNoAnswer() throws Exception {
 		int calleePort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "natcalleetimeout", (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "natcalleetimeout", (call, invite, respond) -> {
 			System.err.println("NATCALLEETIMEOUT: received INVITE, ignoring");
 			System.err.flush();
 		})) {
-			callee.awaitRegistration();
 
 			ProcessResult result = runCaller(callerProcessBuilder("natcalleetimeout", 3));
 
@@ -136,11 +132,10 @@ class SipClientMainNativeIT {
 		int calleePort = freePort();
 		String calleeUser = "natcalleecancel";
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, calleeUser, (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, calleeUser, (call, invite, respond) -> {
 			System.err.println("NATCALLEECANCEL: received INVITE, ignoring (waiting for CANCEL)");
 			System.err.flush();
 		})) {
-			callee.awaitRegistration();
 
 			ProcessResult result = runCaller(callerProcessBuilder(calleeUser, 3));
 
@@ -156,12 +151,11 @@ class SipClientMainNativeIT {
 		int calleePort = freePort();
 		String calleeUser = "natcalleeprov";
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, calleeUser, (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, calleeUser, (call, invite, respond) -> {
 			System.err.println("CALLEEPROV: received INVITE, sending 183");
 			System.err.flush();
 			respond.send(183, "Session Progress");
 		})) {
-			callee.awaitRegistration();
 
 			ProcessResult result = runCaller(callerProcessBuilder(calleeUser, 3));
 
@@ -175,13 +169,12 @@ class SipClientMainNativeIT {
 		int calleePort = freePort();
 		String calleeUser = "natcalleerefuseprov";
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, calleeUser, (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, calleeUser, (call, invite, respond) -> {
 			System.err.println("CALLEEPROVREFUSE: received INVITE, sending 183 then refusing");
 			System.err.flush();
 			respond.send(183, "Session Progress");
 			call.refuse();
 		})) {
-			callee.awaitRegistration();
 
 			ProcessBuilder pb = callerProcessBuilder(calleeUser, 10);
 
@@ -217,7 +210,7 @@ class SipClientMainNativeIT {
 		int calleePort = freePort();
 		String calleeUser = "natcalleeringing";
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, calleeUser, (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, calleeUser, (call, invite, respond) -> {
 			System.err.println("RINGING: received INVITE, sending 180 then accepting after 2s");
 			System.err.flush();
 			respond.send(180, "Ringing");
@@ -232,7 +225,6 @@ class SipClientMainNativeIT {
 				call.accept(call.getLocalSessionDescriptor());
 			}).start();
 		})) {
-			callee.awaitRegistration();
 
 			long start = System.currentTimeMillis();
 			ProcessResult result = runCaller(callerProcessBuilder(calleeUser, 10));
@@ -250,7 +242,7 @@ class SipClientMainNativeIT {
 		int calleePort = freePort();
 		String calleeUser = "natcalleeringingdecline";
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, calleeUser, (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, calleeUser, (call, invite, respond) -> {
 			System.err.println("RINGINGDECL: received INVITE, sending 180 then declining after 2s");
 			System.err.flush();
 			respond.send(180, "Ringing");
@@ -265,7 +257,6 @@ class SipClientMainNativeIT {
 				call.refuse();
 			}).start();
 		})) {
-			callee.awaitRegistration();
 
 			long start = System.currentTimeMillis();
 			ProcessResult result = runCaller(callerProcessBuilder(calleeUser, 10));
