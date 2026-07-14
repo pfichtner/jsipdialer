@@ -553,13 +553,13 @@ class SipRegistrarIT {
 		register.addHeader(new ExpiresHeader(3600), false);
 
 		provider.addPromiscuousListener((p, msg) -> {
-            if (msg.isResponse() && msg.getStatusLine() != null
-                    && msg.getStatusLine().getCode() == 200) {
-                System.err.println("REGISTER: 200 OK received for " + user);
-                System.err.flush();
-                registered.set(true);
-            }
-        });
+			if (msg.isResponse() && msg.getStatusLine() != null
+					&& msg.getStatusLine().getCode() == 200) {
+				System.err.println("REGISTER: 200 OK received for " + user);
+				System.err.flush();
+				registered.set(true);
+			}
+		});
 
 		System.err.println("REGISTER: sending " + user + " to " + registrarHost + ":" + registrarPort);
 		System.err.flush();

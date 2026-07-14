@@ -12,7 +12,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junitpioneer.jupiter.SetEnvironmentVariable;
@@ -166,7 +165,7 @@ class SipClientMainTest {
 
 	private void verifyStdoutAndStderr(StdOut stdout, StdErr stderr) {
 		verify(String.join("\n", "stderr:", stream(stderr.capturedLines()).limit(1).collect(joining("\n")), "", "stdout:",
-                join(stdout.capturedLines())));
+				join(stdout.capturedLines())));
 	}
 
 	private static String join(String[] capturedLines) {

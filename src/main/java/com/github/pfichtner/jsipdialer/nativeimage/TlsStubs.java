@@ -1,7 +1,7 @@
 package com.github.pfichtner.jsipdialer.nativeimage;
 
-import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.TargetClass;
 
 @Delete
 @TargetClass(className = "org.mjsip.sip.provider.TlsTransport")
