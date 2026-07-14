@@ -3,6 +3,7 @@ package com.github.pfichtner.jsipdialer;
 import java.lang.reflect.Field;
 import java.util.Optional;
 
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestWatcher;
 import org.testcontainers.containers.GenericContainer;
@@ -10,7 +11,7 @@ import org.testcontainers.containers.GenericContainer;
 class KamailioLogDumperExtension implements TestWatcher {
 
 	@Override
-	public void testFailed(ExtensionContext context, Throwable cause) {
+	public void testFailed(@NonNull ExtensionContext context, Throwable cause) {
 		findContainer(context).ifPresent(container -> {
 			String logs = container.getLogs();
 			if (!logs.isEmpty()) {
