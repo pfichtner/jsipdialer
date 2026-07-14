@@ -43,23 +43,14 @@ class SipClientMainNativeIT {
 	}
 
 	@Test
-	void callThroughRegistrar() throws Exception {
-		int calleePort = freePort();
-
-		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "natcallee", (call, respond, executor) -> {
-			System.err.println("NATCALLEE: received INVITE, accepting");
-			System.err.flush();
-			call.accept(call.getLocalSessionDescriptor());
-		})) {
-
+	void callThroughRegistrar(@RegisterCallee(user = "natcallee") RegisteredCallee callee) throws Exception {
 		await().atMost(5, TimeUnit.SECONDS)
-					.alias("Process should exit quickly when callee accepts, not wait for full timeout")
-					.untilAsserted(() -> {
-						ProcessResult result = runCaller(callerProcessBuilder("natcallee", 10));
-						assertThat(result.exited()).as("Process should exit within timeout").isTrue();
-						assertThat(result.exitValue()).as("Exit code should be 0 (call accepted)%n%s", result.output()).isZero();
-					});
-		}
+				.alias("Process should exit quickly when callee accepts, not wait for full timeout")
+				.untilAsserted(() -> {
+					ProcessResult result = runCaller(callerProcessBuilder("natcallee", 10));
+					assertThat(result.exited()).as("Process should exit within timeout").isTrue();
+					assertThat(result.exitValue()).as("Exit code should be 0 (call accepted)%n%s", result.output()).isZero();
+				});
 	}
 
 	@Test

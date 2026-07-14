@@ -58,21 +58,13 @@ class SipRegistrarIT {
 			.waitingFor(Wait.forLogMessage(".*Listening on.*", 1));
 
 	@Test
-	void callThroughRegistrar() throws Exception {
-		int calleePort = freePort();
+	void callThroughRegistrar(@RegisterCallee RegisteredCallee callee) throws Exception {
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee", (call, respond, executor) -> {
-			System.err.println("CALLEE: received INVITE, accepting");
-			System.err.flush();
-			call.accept(call.getLocalSessionDescriptor());
-		})) {
-
-			CallService callService = createCaller(callerPort, "callee", 10);
-			await().atMost(5, TimeUnit.SECONDS)
-					.alias("call() should return quickly when callee accepts, not wait for timeout")
-					.untilAsserted(() -> assertThat(callService.call()).isTrue());
-		}
+		CallService callService = createCaller(callerPort, "callee", 10);
+		await().atMost(5, TimeUnit.SECONDS)
+				.alias("call() should return quickly when callee accepts, not wait for timeout")
+				.untilAsserted(() -> assertThat(callService.call()).isTrue());
 	}
 
 	@Test
@@ -158,21 +150,13 @@ class SipRegistrarIT {
 	}
 
 	@Test
-	void acceptedThenTimeoutHangup() throws Exception {
-		int calleePort = freePort();
+	void acceptedThenTimeoutHangup(@RegisterCallee(user = "callee8") RegisteredCallee callee) throws Exception {
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee8", (call, respond, executor) -> {
-			System.err.println("CALLEE8: received INVITE, accepting (caller will timeout)");
-			System.err.flush();
-			call.accept(call.getLocalSessionDescriptor());
-		})) {
-
-			CallService callService = createCaller(callerPort, "callee8", 3);
-			await().atMost(5, TimeUnit.SECONDS)
-					.alias("call() should return quickly when callee accepts, not wait for timeout")
-					.untilAsserted(() -> assertThat(callService.call()).isTrue());
-		}
+		CallService callService = createCaller(callerPort, "callee8", 3);
+		await().atMost(5, TimeUnit.SECONDS)
+				.alias("call() should return quickly when callee accepts, not wait for timeout")
+				.untilAsserted(() -> assertThat(callService.call()).isTrue());
 	}
 
 	@Test

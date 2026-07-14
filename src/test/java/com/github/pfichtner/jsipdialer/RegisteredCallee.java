@@ -2,6 +2,8 @@ package com.github.pfichtner.jsipdialer;
 
 import static org.awaitility.Awaitility.await;
 
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -120,6 +122,13 @@ record RegisteredCallee(AtomicBoolean registered, AtomicBoolean cancelReceived, 
 		hangup();
 		halt();
 		executor.shutdownNow();
+	}
+
+	static int freePort() throws IOException {
+		try (ServerSocket s = new ServerSocket(0)) {
+			s.setReuseAddress(true);
+			return s.getLocalPort();
+		}
 	}
 
 	static void sendRegister(SipProvider provider, String registrarHost, int registrarPort,
