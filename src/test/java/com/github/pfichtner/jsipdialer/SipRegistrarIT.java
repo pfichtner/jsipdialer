@@ -63,7 +63,7 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee", call -> {
+		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee", (call, p, invite) -> {
 			System.err.println("CALLEE: received INVITE, accepting");
 			System.err.flush();
 			call.accept(call.getLocalSessionDescriptor());
@@ -84,7 +84,7 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee7", call -> {
+		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee7", (call, p, invite) -> {
 			System.err.println("CALLEE7: received INVITE, accepting then BYE");
 			System.err.flush();
 			call.accept(call.getLocalSessionDescriptor());
@@ -174,7 +174,7 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee8", call -> {
+		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee8", (call, p, invite) -> {
 			System.err.println("CALLEE8: received INVITE, accepting (caller will timeout)");
 			System.err.flush();
 			call.accept(call.getLocalSessionDescriptor());
@@ -195,7 +195,7 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee9", call -> {
+		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee9", (call, p, invite) -> {
 			System.err.println("CALLEE9: received INVITE, refusing");
 			System.err.flush();
 			call.refuse();
@@ -225,7 +225,7 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee11", call -> {
+		try (RegisteredCallee callee = RegisteredCallee.register(calleePort, "callee11", (call, p, invite) -> {
 			System.err.println("CALLEE11: received INVITE, ignoring");
 			System.err.flush();
 		})) {

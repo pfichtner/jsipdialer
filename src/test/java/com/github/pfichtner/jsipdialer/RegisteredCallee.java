@@ -19,14 +19,15 @@ import org.mjsip.sip.provider.SipProvider;
 import org.mjsip.time.ConfiguredScheduler;
 import org.mjsip.time.SchedulerConfig;
 
-record RegisteredCallee(AtomicBoolean registered, ExtendedCall call, SipProvider provider) implements AutoCloseable {
+record RegisteredCallee(AtomicBoolean registered, AtomicBoolean cancelReceived, AtomicBoolean inviteReceived,
+		ExtendedCall call, SipProvider provider) implements AutoCloseable {
 
 	static final int KAMAILIO_PORT = 15060;
 	static final String REGISTRAR_HOST = "127.0.0.1";
 
 	@FunctionalInterface
 	interface CalleeAction {
-		void onInvite(Call call);
+		void onInvite(Call call, SipProvider provider, SipMessage invite);
 	}
 
 	static RegisteredCallee register(int port, String user, CalleeAction action) {
@@ -42,7 +43,16 @@ record RegisteredCallee(AtomicBoolean registered, ExtendedCall call, SipProvider
 		SipProvider provider = new SipProvider(config, new ConfiguredScheduler(schedConfig));
 
 		AtomicBoolean registered = new AtomicBoolean();
+		AtomicBoolean cancelReceived = new AtomicBoolean();
+		AtomicBoolean inviteReceived = new AtomicBoolean();
+
 		sendRegister(provider, REGISTRAR_HOST, KAMAILIO_PORT, user, "127.0.0.1", port, registered);
+
+		provider.addPromiscuousListener((p, msg) -> {
+			if (msg.isRequest() && msg.isCancel()) {
+				cancelReceived.set(true);
+			}
+		});
 
 		SdpMessage calleeSdp = SdpMessage.createSdpMessage(user, "0.0.0.0");
 		ExtendedCall calleeCall = new ExtendedCall(provider,
@@ -53,17 +63,30 @@ record RegisteredCallee(AtomicBoolean registered, ExtendedCall call, SipProvider
 					@Override
 					public void onCallInvite(Call call, NameAddress callee, NameAddress caller,
 							SdpMessage sdp, SipMessage invite) {
-						action.onInvite(call);
+						inviteReceived.set(true);
+						action.onInvite(call, provider, invite);
 					}
 				});
 		calleeCall.setLocalSessionDescriptor(calleeSdp);
 		calleeCall.listen();
 
-		return new RegisteredCallee(registered, calleeCall, provider);
+		return new RegisteredCallee(registered, cancelReceived, inviteReceived, calleeCall, provider);
 	}
 
 	void awaitRegistration() {
 		await().atMost(5, TimeUnit.SECONDS).untilTrue(registered);
+	}
+
+	void awaitCancel(long timeout, TimeUnit unit) {
+		await().atMost(timeout, unit).untilTrue(cancelReceived);
+	}
+
+	void awaitInvite(long timeout, TimeUnit unit) {
+		await().atMost(timeout, unit).untilTrue(inviteReceived);
+	}
+
+	boolean isCancelReceived() {
+		return cancelReceived.get();
 	}
 
 	void hangup() {
