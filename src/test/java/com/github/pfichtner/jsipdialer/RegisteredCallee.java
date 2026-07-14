@@ -2,6 +2,8 @@ package com.github.pfichtner.jsipdialer;
 
 import static org.awaitility.Awaitility.await;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -20,7 +22,7 @@ import org.mjsip.time.ConfiguredScheduler;
 import org.mjsip.time.SchedulerConfig;
 
 record RegisteredCallee(AtomicBoolean registered, AtomicBoolean cancelReceived, AtomicBoolean inviteReceived,
-		ExtendedCall call, SipProvider provider) implements AutoCloseable {
+		ExtendedCall call, SipProvider provider, ScheduledExecutorService executor) implements AutoCloseable {
 
 	static final int KAMAILIO_PORT = 15060;
 	static final String REGISTRAR_HOST = "127.0.0.1";
@@ -32,7 +34,7 @@ record RegisteredCallee(AtomicBoolean registered, AtomicBoolean cancelReceived, 
 
 	@FunctionalInterface
 	interface CalleeAction {
-		void onInvite(Call call, SipMessage invite, ResponseSender respond);
+		void onInvite(Call call, ResponseSender respond, ScheduledExecutorService executor);
 	}
 
 	static RegisteredCallee register(int port, String user, CalleeAction action) {
@@ -50,6 +52,7 @@ record RegisteredCallee(AtomicBoolean registered, AtomicBoolean cancelReceived, 
 		AtomicBoolean registered = new AtomicBoolean();
 		AtomicBoolean cancelReceived = new AtomicBoolean();
 		AtomicBoolean inviteReceived = new AtomicBoolean();
+		ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
 		sendRegister(provider, REGISTRAR_HOST, KAMAILIO_PORT, user, "127.0.0.1", port, registered);
 
@@ -69,17 +72,17 @@ record RegisteredCallee(AtomicBoolean registered, AtomicBoolean cancelReceived, 
 					public void onCallInvite(Call call, NameAddress callee, NameAddress caller,
 							SdpMessage sdp, SipMessage invite) {
 						inviteReceived.set(true);
-						action.onInvite(call, invite, (statusCode, reason) -> {
+						action.onInvite(call, (statusCode, reason) -> {
 							SipMessage resp = provider.messageFactory()
 									.createResponse(invite, statusCode, reason, null);
 							provider.sendMessage(resp);
-						});
+						}, executor);
 					}
 				});
 		calleeCall.setLocalSessionDescriptor(calleeSdp);
 		calleeCall.listen();
 
-		return new RegisteredCallee(registered, cancelReceived, inviteReceived, calleeCall, provider);
+		return new RegisteredCallee(registered, cancelReceived, inviteReceived, calleeCall, provider, executor);
 	}
 
 	static RegisteredCallee registerAndAwait(int port, String user, CalleeAction action) {
@@ -116,6 +119,7 @@ record RegisteredCallee(AtomicBoolean registered, AtomicBoolean cancelReceived, 
 	public void close() {
 		hangup();
 		halt();
+		executor.shutdownNow();
 	}
 
 	static void sendRegister(SipProvider provider, String registrarHost, int registrarPort,

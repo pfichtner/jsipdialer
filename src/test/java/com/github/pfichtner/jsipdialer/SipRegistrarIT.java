@@ -62,7 +62,7 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee", (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee", (call, respond, executor) -> {
 			System.err.println("CALLEE: received INVITE, accepting");
 			System.err.flush();
 			call.accept(call.getLocalSessionDescriptor());
@@ -80,7 +80,7 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee7", (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee7", (call, respond, executor) -> {
 			System.err.println("CALLEE7: received INVITE, accepting then BYE");
 			System.err.flush();
 			call.accept(call.getLocalSessionDescriptor());
@@ -162,7 +162,7 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee8", (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee8", (call, respond, executor) -> {
 			System.err.println("CALLEE8: received INVITE, accepting (caller will timeout)");
 			System.err.flush();
 			call.accept(call.getLocalSessionDescriptor());
@@ -180,7 +180,7 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee9", (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee9", (call, respond, executor) -> {
 			System.err.println("CALLEE9: received INVITE, refusing");
 			System.err.flush();
 			call.refuse();
@@ -207,7 +207,7 @@ class SipRegistrarIT {
 		int calleePort = freePort();
 		int callerPort = freePort();
 
-		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee11", (call, invite, respond) -> {
+		try (RegisteredCallee callee = RegisteredCallee.registerAndAwait(calleePort, "callee11", (call, respond, executor) -> {
 			System.err.println("CALLEE11: received INVITE, ignoring");
 			System.err.flush();
 		})) {
