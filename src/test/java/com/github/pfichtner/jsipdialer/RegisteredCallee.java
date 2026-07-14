@@ -26,8 +26,13 @@ record RegisteredCallee(AtomicBoolean registered, AtomicBoolean cancelReceived, 
 	static final String REGISTRAR_HOST = "127.0.0.1";
 
 	@FunctionalInterface
+	interface ResponseSender {
+		void send(int statusCode, String reason);
+	}
+
+	@FunctionalInterface
 	interface CalleeAction {
-		void onInvite(Call call, SipProvider provider, SipMessage invite);
+		void onInvite(Call call, SipMessage invite, ResponseSender respond);
 	}
 
 	static RegisteredCallee register(int port, String user, CalleeAction action) {
@@ -64,7 +69,11 @@ record RegisteredCallee(AtomicBoolean registered, AtomicBoolean cancelReceived, 
 					public void onCallInvite(Call call, NameAddress callee, NameAddress caller,
 							SdpMessage sdp, SipMessage invite) {
 						inviteReceived.set(true);
-						action.onInvite(call, provider, invite);
+						action.onInvite(call, invite, (statusCode, reason) -> {
+							SipMessage resp = provider.messageFactory()
+									.createResponse(invite, statusCode, reason, null);
+							provider.sendMessage(resp);
+						});
 					}
 				});
 		calleeCall.setLocalSessionDescriptor(calleeSdp);
