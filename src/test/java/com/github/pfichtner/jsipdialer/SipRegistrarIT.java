@@ -107,6 +107,11 @@ class SipRegistrarIT {
 
 		CallService callService = createCaller(callerPort, "callee11", 3);
 		assertThat(callService.call()).isFalse();
+		// The "200 canceling" reply to our CANCEL shares the Call-ID but has
+		// CSeq method CANCEL, not INVITE. It must not be misread as the callee
+		// accepting the call — otherwise call() wrongly returns true on timeout.
+		assertThat(callService.getReason()).as("Reason should not be OK (CANCEL must not be mistaken for acceptance)")
+				.isNotEqualTo("OK");
 	}
 
 	@Test

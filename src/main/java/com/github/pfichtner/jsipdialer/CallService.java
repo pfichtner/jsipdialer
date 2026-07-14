@@ -118,8 +118,14 @@ public class CallService {
 				// (which re-sends the INVITE with Authorization), so we must NOT
 				// treat them as final — doing so would exit before the re-INVITE.
 				SipMessage invite = sentInvite;
+				// Match only responses to our INVITE, not responses to other
+				// requests (e.g. "200 OK" to our CANCEL on timeout, or "200 OK"
+				// to a BYE). These share the Call-ID but have a different CSeq
+				// method (CANCEL/BYE), and treating them as a successful INVITE
+				// acceptance would make call() wrongly return true on timeout.
 				if (invite != null && !remoteResponded && code >= 200
 						&& code != 401 && code != 407
+						&& isInviteResponse(msg)
 						&& sameCallId(msg, invite)) {
 					System.err.println("CALL: fallback detected final response " + code);
 					System.err.flush();
@@ -309,6 +315,11 @@ public class CallService {
 
 	public String getReason() {
 		return reason;
+	}
+
+	private static boolean isInviteResponse(SipMessage msg) {
+		var cseq = msg.getCSeqHeader();
+		return cseq != null && SipMethods.INVITE.equalsIgnoreCase(cseq.getMethod());
 	}
 
 	private static boolean sameCallId(SipMessage a, SipMessage b) {
