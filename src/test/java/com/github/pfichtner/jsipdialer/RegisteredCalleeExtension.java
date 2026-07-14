@@ -18,12 +18,6 @@ class RegisteredCalleeExtension implements ParameterResolver, AfterEachCallback 
 	private static final Namespace NAMESPACE = Namespace.create(RegisteredCalleeExtension.class);
 	private static final String CALLEES_KEY = "callees";
 
-	private static final RegisteredCallee.CalleeAction DEFAULT_ACTION = (call, respond, executor) -> {
-		System.err.println("CALLEE: received INVITE, accepting");
-		System.err.flush();
-		call.accept(call.getLocalSessionDescriptor());
-	};
-
 	@Override
 	public boolean supportsParameter(ParameterContext paramContext, ExtensionContext context) {
 		Parameter parameter = paramContext.getParameter();
@@ -41,8 +35,8 @@ class RegisteredCalleeExtension implements ParameterResolver, AfterEachCallback 
 		String user = annotation.user();
 
 		RegisteredCallee callee = annotation.awaitRegistration()
-				? RegisteredCallee.registerAndAwait(port, user, DEFAULT_ACTION)
-				: RegisteredCallee.register(port, user, DEFAULT_ACTION);
+				? RegisteredCallee.registerAndAwait(port, user, annotation.behavior())
+				: RegisteredCallee.register(port, user, annotation.behavior());
 
 		Store store = context.getStore(NAMESPACE);
 		List<RegisteredCallee> callees = (List<RegisteredCallee>) store.getOrComputeIfAbsent(CALLEES_KEY,

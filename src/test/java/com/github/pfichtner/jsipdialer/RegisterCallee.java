@@ -14,4 +14,6 @@ public @interface RegisterCallee {
 	boolean awaitRegistration() default true;
 
 	String user() default "callee";
+
+	CalleeBehavior behavior() default CalleeBehavior.ACCEPT;
 }
