@@ -1,5 +1,6 @@
 package com.github.pfichtner.jsipdialer;
 
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -318,8 +319,11 @@ public class CallService {
 	}
 
 	private static boolean isInviteResponse(SipMessage msg) {
-		var cseq = msg.getCSeqHeader();
-		return cseq != null && SipMethods.INVITE.equalsIgnoreCase(cseq.getMethod());
+		return Optional.of(msg)
+				.map(SipMessage::getCSeqHeader)
+				.map(CSeqHeader::getMethod)
+				.filter(SipMethods.INVITE::equalsIgnoreCase)
+				.isPresent();
 	}
 
 	private static boolean sameCallId(SipMessage a, SipMessage b) {
