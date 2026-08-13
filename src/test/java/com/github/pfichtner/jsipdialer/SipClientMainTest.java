@@ -171,6 +171,78 @@ class SipClientMainTest {
 		verifyStdoutAndStderr(stdOut, stderr);
 	}
 
+	@Test
+	@StdIo
+	@WritesStdIo
+	void invalidServerPortIsRejected(StdErr stderr) throws Exception {
+		int exitCode = callMainReturningExitCode(argsWithValue(ARGNAME_SIP_SERVER_PORT, "not-a-number"));
+		assertThat(exitCode).isEqualTo(1);
+		assertThat(join(stderr.capturedLines())).contains("not a valid integer");
+	}
+
+	@Test
+	@StdIo
+	@WritesStdIo
+	void outOfRangeServerPortIsRejected(StdErr stderr) throws Exception {
+		int exitCode = callMainReturningExitCode(argsWithValue(ARGNAME_SIP_SERVER_PORT, "70000"));
+		assertThat(exitCode).isEqualTo(1);
+		assertThat(join(stderr.capturedLines())).contains("outside the allowed range");
+	}
+
+	@Test
+	@StdIo
+	@WritesStdIo
+	void invalidTimeoutIsRejected(StdErr stderr) throws Exception {
+		int exitCode = callMainReturningExitCode(argsWithValue(ARGNAME_TIMEOUT, "not-a-number"));
+		assertThat(exitCode).isEqualTo(1);
+		assertThat(join(stderr.capturedLines())).contains("not a valid integer");
+	}
+
+	@Test
+	@StdIo
+	@WritesStdIo
+	void negativeTimeoutIsRejected(StdErr stderr) throws Exception {
+		int exitCode = callMainReturningExitCode(argsWithValue(ARGNAME_TIMEOUT, "-1"));
+		assertThat(exitCode).isEqualTo(1);
+		assertThat(join(stderr.capturedLines())).contains("outside the allowed range");
+	}
+
+	@Test
+	@StdIo
+	@WritesStdIo
+	void controlCharactersInCallerNameAreRejected(StdErr stderr) throws Exception {
+		int exitCode = callMainReturningExitCode(argsWithValue(ARGNAME_CALLER_NAME, "bad\r\nInjected: header"));
+		assertThat(exitCode).isEqualTo(1);
+		assertThat(join(stderr.capturedLines())).contains("control characters are not allowed");
+	}
+
+	@Test
+	@StdIo
+	@WritesStdIo
+	void controlCharactersInDestinationNumberAreRejected(StdErr stderr) throws Exception {
+		int exitCode = callMainReturningExitCode(argsWithValue(ARGNAME_DESTINATION_NUMBER, "1234\r\n"));
+		assertThat(exitCode).isEqualTo(1);
+		assertThat(join(stderr.capturedLines())).contains("control characters are not allowed");
+	}
+
+	@Test
+	@StdIo
+	@WritesStdIo
+	void controlCharactersInUsernameAreRejected(StdErr stderr) throws Exception {
+		int exitCode = callMainReturningExitCode(argsWithValue(ARGNAME_SIP_USERNAME, "bad\r\nuser"));
+		assertThat(exitCode).isEqualTo(1);
+		assertThat(join(stderr.capturedLines())).contains("control characters are not allowed");
+	}
+
+	@Test
+	@StdIo
+	@WritesStdIo
+	void controlCharactersInServerAddressAreRejected(StdErr stderr) throws Exception {
+		int exitCode = callMainReturningExitCode(argsWithValue(ARGNAME_SIP_SERVER_ADDRESS, "server\r\nexample.com"));
+		assertThat(exitCode).isEqualTo(1);
+		assertThat(join(stderr.capturedLines())).contains("control characters are not allowed");
+	}
+
 	private String[] and(String[] strings, String... others) {
 		return concat(Arrays.stream(strings), Arrays.stream(others)).toArray(String[]::new);
 	}
@@ -199,6 +271,17 @@ class SipClientMainTest {
 
 	private void callMain(String... args) throws Exception {
 		sipClientMainSpy.doMain(args);
+	}
+
+	private int callMainReturningExitCode(String... args) throws Exception {
+		return sipClientMainSpy.doMain(args);
+	}
+
+	private String[] argsWithValue(String option, String value) {
+		String[] base = Arrays.stream(and(requiredArgs(), ARGNAME_SIP_USERNAME, ARGNAME_SIP_PASSWORD))
+				.filter(a -> !a.equals(option))
+				.toArray(String[]::new);
+		return and(setValuesOn(base), "-" + option, value);
 	}
 
 }

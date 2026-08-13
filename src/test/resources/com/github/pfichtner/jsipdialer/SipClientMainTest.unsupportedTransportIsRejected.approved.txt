@@ -1,5 +1,5 @@
 stderr:
-org.apache.commons.cli.ParseException: Unsupported transport 'sctp', must be one of [tcp, udp]
+org.apache.commons.cli.ParseException: Unsupported transport 'sctp', must be one of [udp, tcp]
 
 stdout:
 usage: jsipdialer

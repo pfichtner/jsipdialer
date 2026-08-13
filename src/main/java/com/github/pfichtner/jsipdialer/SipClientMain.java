@@ -1,10 +1,9 @@
 package com.github.pfichtner.jsipdialer;
 
-import static java.lang.Integer.parseInt;
-
 import java.util.Optional;
 import java.util.function.Supplier;
 
+import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
@@ -32,7 +31,7 @@ public class SipClientMain {
 	public static final String SIP_SERVER_ADDRESS = "sipServerAddress";
 	public static final String SIP_SERVER_PORT = "sipServerPort";
 
-	private static final java.util.Set<String> SUPPORTED_TRANSPORTS = java.util.Set.of(DEFAULT_TRANSPORT, "tcp");
+	private static final java.util.List<String> SUPPORTED_TRANSPORTS = java.util.List.of(DEFAULT_TRANSPORT, "tcp");
 
 	public static void main(String... args) throws Exception {
 		var exitCode = new SipClientMain().doMain(args);
@@ -51,15 +50,19 @@ public class SipClientMain {
 					requireNonNull(cmdLine.getOptionValue(PASSWORD, env(ENVVAR_SIP_PASSWORD)),
 							envErrorMessage(PASSWORD, ENVVAR_SIP_PASSWORD)));
 			var serverAddress = cmdLine.getOptionValue(SIP_SERVER_ADDRESS);
-			var serverPort = parseInt(cmdLine.getOptionValue(SIP_SERVER_PORT, String.valueOf(DEFAULT_SIPPORT)));
+			var serverPort = parseIntOption(cmdLine, SIP_SERVER_PORT, DEFAULT_SIPPORT, 1, 65535);
 			var destinationNumber = cmdLine.getOptionValue(DESTINATION_NUMBER);
 			var callerName = cmdLine.getOptionValue(CALLER_NAME);
-			var timeout = parseInt(cmdLine.getOptionValue(TIMEOUT, String.valueOf(DEFAULT_TIMEOUT)));
+			var timeout = parseIntOption(cmdLine, TIMEOUT, DEFAULT_TIMEOUT, 0, Integer.MAX_VALUE);
 			var transport = cmdLine.getOptionValue(TRANSPORT, DEFAULT_TRANSPORT).toLowerCase();
 			if (!SUPPORTED_TRANSPORTS.contains(transport)) {
 				throw new ParseException(
 						"Unsupported transport '%s', must be one of %s".formatted(transport, SUPPORTED_TRANSPORTS));
 			}
+			validateNoControlCharacters(serverAddress, SIP_SERVER_ADDRESS);
+			validateNoControlCharacters(destinationNumber, DESTINATION_NUMBER);
+			validateNoControlCharacters(callerName, CALLER_NAME);
+			validateNoControlCharacters(sipConfig.username(), USERNAME);
 
 			var callService = createCallService(serverAddress, serverPort, sipConfig.username(),
 					sipConfig.password(), destinationNumber, callerName, timeout, transport);
@@ -93,6 +96,31 @@ public class SipClientMain {
 			throw new ParseException(errorMessage);
 		}
 		return value;
+	}
+
+	private static int parseIntOption(CommandLine cmdLine, String option, int defaultValue, int min, int max)
+			throws ParseException {
+		String value = cmdLine.getOptionValue(option, String.valueOf(defaultValue));
+		int parsed;
+		try {
+			parsed = Integer.parseInt(value);
+		} catch (NumberFormatException e) {
+			throw new ParseException(
+					"Invalid value for '%s': '%s' is not a valid integer".formatted(option, value));
+		}
+		if (parsed < min || parsed > max) {
+			throw new ParseException(
+					"Invalid value for '%s': '%s' is outside the allowed range [%d, %d]".formatted(option, value, min,
+							max));
+		}
+		return parsed;
+	}
+
+	private static void validateNoControlCharacters(String value, String name) throws ParseException {
+		if (value != null && value.chars().anyMatch(c -> c < 0x20 || c == 0x7F)) {
+			throw new ParseException(
+					"Invalid value for '%s': control characters are not allowed".formatted(name));
+		}
 	}
 
 	private static Options options() {
