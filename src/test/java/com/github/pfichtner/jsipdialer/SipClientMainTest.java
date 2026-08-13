@@ -29,6 +29,7 @@ class SipClientMainTest {
 	private static final String ARGNAME_CALLER_NAME = SipClientMain.CALLER_NAME;
 	private static final String ARGNAME_DESTINATION_NUMBER = SipClientMain.DESTINATION_NUMBER;
 	private static final String ARGNAME_TIMEOUT = SipClientMain.TIMEOUT;
+	private static final String ARGNAME_TRANSPORT = SipClientMain.TRANSPORT;
 
 	private static final class SipClientMainSpy extends SipClientMain {
 
@@ -44,7 +45,7 @@ class SipClientMainTest {
 
 		@Override
 		protected CallService createCallService(String serverAddress, int serverPort, String username,
-				String password, String destinationNumber, String callerName, int timeout) {
+				String password, String destinationNumber, String callerName, int timeout, String transport) {
 			this.serverAddress = serverAddress;
 			this.serverPort = serverPort;
 			this.username = username;
@@ -52,7 +53,7 @@ class SipClientMainTest {
 			this.destinationNumber = destinationNumber;
 			this.callerName = callerName;
 			this.timeout = timeout;
-			this.transport = "udp";
+			this.transport = transport;
 			return new CallService(null, 0, null, null, null, null, 0, null) {
 				@Override
 				public boolean call() {
@@ -70,7 +71,8 @@ class SipClientMainTest {
 			ARGNAME_SIP_PASSWORD, "somePassword", //
 			ARGNAME_CALLER_NAME, "someCallerName", //
 			ARGNAME_DESTINATION_NUMBER, "12345", //
-			ARGNAME_TIMEOUT, SipClientMain.DEFAULT_TIMEOUT + 1 //
+			ARGNAME_TIMEOUT, SipClientMain.DEFAULT_TIMEOUT + 1, //
+			ARGNAME_TRANSPORT, "tcp" //
 	));
 
 	final SipClientMainSpy sipClientMainSpy = new SipClientMainSpy();
@@ -144,6 +146,29 @@ class SipClientMainTest {
 			s.assertThat(sipClientMainSpy.callerName).isEqualTo(value(ARGNAME_CALLER_NAME));
 			s.assertThat(sipClientMainSpy.timeout).isEqualTo(value(ARGNAME_TIMEOUT));
 		});
+	}
+
+	@Test
+	void canSetTransport() throws Exception {
+		callMain(setValuesOn(and(requiredArgs(), ARGNAME_SIP_USERNAME, ARGNAME_SIP_PASSWORD, ARGNAME_TRANSPORT)));
+		assertThat(sipClientMainSpy.transport).isEqualTo(value(ARGNAME_TRANSPORT));
+	}
+
+	@Test
+	void defaultsToUdpTransport() throws Exception {
+		callMain(setValuesOn(and(requiredArgs(), ARGNAME_SIP_USERNAME, ARGNAME_SIP_PASSWORD)));
+		assertThat(sipClientMainSpy.transport).isEqualTo(SipClientMain.DEFAULT_TRANSPORT);
+	}
+
+	@Test
+	@StdIo
+	@WritesStdIo
+	void unsupportedTransportIsRejected(StdOut stdOut, StdErr stderr) throws Exception {
+		var args = and(setValuesOn(and(requiredArgs(), ARGNAME_SIP_USERNAME, ARGNAME_SIP_PASSWORD)),
+				"-" + ARGNAME_TRANSPORT, "sctp");
+		callMain(args);
+		assertThat(join(stderr.capturedLines())).contains("Unsupported transport");
+		verifyStdoutAndStderr(stdOut, stderr);
 	}
 
 	private String[] and(String[] strings, String... others) {

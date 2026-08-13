@@ -18,7 +18,7 @@ Calls the number `**9` ("Sammelrufnummer" on FRITZ!Box devices) for at most 20 s
 
 `SIP_USERNAME` and `SIP_PASSWORD` are passed via environment variables for security reasons. Confidential information should generally not be passed via command-line arguments because it may be visible to other users or processes on the system.
 
-`callerName` and `timeout` are optional.
+`callerName`, `timeout` and `transport` are optional. The `transport` option (default `udp`) selects the SIP transport protocol used to reach the SIP server; FRITZ!Box devices support `tcp` in addition to `udp` on their internal registrar.
 
 You can download native images (executables) from the [releases](https://github.com/pfichtner/jsipdialer/releases).
 

@@ -16,6 +16,7 @@ public class SipClientMain {
 
 	public static final int DEFAULT_SIPPORT = 5060;
 	public static final int DEFAULT_TIMEOUT = 15;
+	public static final String DEFAULT_TRANSPORT = "udp";
 
 	public static final String ENVVAR_SIP_USERNAME = "SIP_USERNAME";
 	public static final String ENVVAR_SIP_PASSWORD = "SIP_PASSWORD";
@@ -23,12 +24,15 @@ public class SipClientMain {
 	public static final String DESTINATION_NUMBER = "destinationNumber";
 	public static final String CALLER_NAME = "callerName";
 	public static final String TIMEOUT = "timeout";
+	public static final String TRANSPORT = "transport";
 
 	public static final String USERNAME = "sipUsername";
 	public static final String PASSWORD = "sipPassword";
 
 	public static final String SIP_SERVER_ADDRESS = "sipServerAddress";
 	public static final String SIP_SERVER_PORT = "sipServerPort";
+
+	private static final java.util.Set<String> SUPPORTED_TRANSPORTS = java.util.Set.of(DEFAULT_TRANSPORT, "tcp");
 
 	public static void main(String... args) throws Exception {
 		var exitCode = new SipClientMain().doMain(args);
@@ -51,9 +55,14 @@ public class SipClientMain {
 			var destinationNumber = cmdLine.getOptionValue(DESTINATION_NUMBER);
 			var callerName = cmdLine.getOptionValue(CALLER_NAME);
 			var timeout = parseInt(cmdLine.getOptionValue(TIMEOUT, String.valueOf(DEFAULT_TIMEOUT)));
+			var transport = cmdLine.getOptionValue(TRANSPORT, DEFAULT_TRANSPORT).toLowerCase();
+			if (!SUPPORTED_TRANSPORTS.contains(transport)) {
+				throw new ParseException(
+						"Unsupported transport '%s', must be one of %s".formatted(transport, SUPPORTED_TRANSPORTS));
+			}
 
 			var callService = createCallService(serverAddress, serverPort, sipConfig.username(),
-					sipConfig.password(), destinationNumber, callerName, timeout);
+					sipConfig.password(), destinationNumber, callerName, timeout, transport);
 			if (!callService.call()) {
 				System.err.println("Call failed: " + callService.getReason());
 				return 1;
@@ -67,9 +76,9 @@ public class SipClientMain {
 	}
 
 	protected CallService createCallService(String serverAddress, int serverPort, String username,
-			String password, String destinationNumber, String callerName, int timeout) {
+			String password, String destinationNumber, String callerName, int timeout, String transport) {
 		return new CallService(serverAddress, serverPort, username, password,
-				destinationNumber, callerName, timeout, "udp");
+				destinationNumber, callerName, timeout, transport);
 	}
 
 	private static String binaryName() {
@@ -96,7 +105,8 @@ public class SipClientMain {
 						"sip password (should better be passed via env var " + ENVVAR_SIP_PASSWORD + ")")
 				.addRequiredOption(DESTINATION_NUMBER, null, true, "the number to call")
 				.addOption(CALLER_NAME, null, true, "the caller's name that gets displayed")
-				.addOption(TIMEOUT, true, "terminate call at most after x seconds");
+				.addOption(TIMEOUT, true, "terminate call at most after x seconds")
+				.addOption(TRANSPORT, true, "transport protocol to use (udp or tcp)");
 	}
 
 	private static String envErrorMessage(String name, String envVar) {

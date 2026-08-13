@@ -44,6 +44,16 @@ class SipRegistrarIT {
 	}
 
 	@Test
+	void callThroughRegistrarOverTcp(@RegisterCallee RegisteredCallee callee) throws Exception {
+		int callerPort = freePort();
+
+		CallService callService = createCaller(callerPort, "callee", 10, "tcp");
+		await().atMost(5, TimeUnit.SECONDS)
+				.alias("call() should return quickly when callee accepts over tcp, not wait for timeout")
+				.untilAsserted(() -> assertThat(callService.call()).isTrue());
+	}
+
+	@Test
 	void acceptedThenRemoteBye(
 			@RegisterCallee(user = "callee7", behavior = CalleeBehavior.ACCEPT_THEN_BYE) RegisteredCallee callee)
 			throws Exception {
@@ -166,11 +176,15 @@ class SipRegistrarIT {
 	}
 
 	private CallService createCaller(int port, String destination, int timeoutSeconds) {
+		return createCaller(port, destination, timeoutSeconds, "udp");
+	}
+
+	private CallService createCaller(int port, String destination, int timeoutSeconds, String transport) {
 		return new CallService(
 				REGISTRAR_HOST, KAMAILIO_PORT,
 				"caller", "pass",
 				destination, null,
-				timeoutSeconds, "udp",
+				timeoutSeconds, transport,
 				port);
 	}
 

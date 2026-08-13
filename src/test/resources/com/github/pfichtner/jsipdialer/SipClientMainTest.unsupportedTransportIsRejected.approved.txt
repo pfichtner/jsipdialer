@@ -1,5 +1,5 @@
 stderr:
-org.apache.commons.cli.MissingOptionException: Missing required options: sipServerAddress, destinationNumber
+org.apache.commons.cli.ParseException: Unsupported transport 'sctp', must be one of [tcp, udp]
 
 stdout:
 usage: jsipdialer
