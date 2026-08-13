@@ -30,6 +30,14 @@ Of course, you can also use jsipdialer without a native image. In that case, you
 java -jar jsipdialer.jar
 ```
 
+## Security notes
+
+- The FRITZ!Box registrar that jsipdialer dials into does **not** offer TLS/SIPS on its LAN interface, so the SIP signaling is sent unencrypted. Use jsipdialer only on a network you trust.
+- The FRITZ!Box authenticates with the SIP Digest scheme using MD5. The digest (including the password hash) is computed client-side and sent over the wire unprotected. Use a strong password dedicated to this account, and do not reuse a password that protects anything else.
+- Prefer `-transport tcp` over UDP where possible: UDP traffic is easier to spoof, and FRITZ!Box devices support TCP on their internal registrar.
+- SIP responses are only accepted when they match an INVITE actually sent by this tool (random Via branch, Call-ID and From tag), so forged responses from the network cannot make a call succeed or fail.
+- Pass credentials via the `SIP_USERNAME`/`SIP_PASSWORD` environment variables rather than command line arguments, which may be visible to other processes on the system.
+
 ## Trademark Notice
 
 FRITZ! and FRITZ!Box are trademarks of FRITZ! GmbH.
