@@ -138,6 +138,26 @@ class SipClientMainTest {
 	}
 
 	@Test
+	@StdIo
+	@WritesStdIo
+	void warnsWhenCredentialsArePassedViaCommandLine(StdErr stderr) throws Exception {
+		callMain(setValuesOn(and(requiredArgs(), ARGNAME_SIP_USERNAME, ARGNAME_SIP_PASSWORD)));
+		assertThat(join(stderr.capturedLines()))
+				.contains("WARNING: The SIP credentials were passed as command line arguments.")
+				.contains("environment variables");
+	}
+
+	@Test
+	@SetEnvironmentVariable(key = SipClientMain.ENVVAR_SIP_USERNAME, value = "userNameViaEnv")
+	@SetEnvironmentVariable(key = SipClientMain.ENVVAR_SIP_PASSWORD, value = "passwordViaEnv")
+	@StdIo
+	@WritesStdIo
+	void noWarningWhenCredentialsComeFromEnvironmentVariables(StdErr stderr) throws Exception {
+		callMain(setValuesOn(requiredArgs()));
+		assertThat(join(stderr.capturedLines())).doesNotContain("WARNING");
+	}
+
+	@Test
 	void canSetOptionalValues() throws Exception {
 		callMain(setValuesOn(and(requiredArgs(), ARGNAME_SIP_USERNAME, ARGNAME_SIP_PASSWORD, ARGNAME_SIP_SERVER_PORT,
 				ARGNAME_CALLER_NAME, ARGNAME_TIMEOUT)));

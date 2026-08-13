@@ -1,5 +1,5 @@
 stderr:
-org.apache.commons.cli.ParseException: Unsupported transport 'sctp', must be one of [udp, tcp]
+WARNING: The SIP credentials were passed as command line arguments. This is insecure because they may be visible to other processes on the system. Prefer the SIP_USERNAME and SIP_PASSWORD environment variables.
 
 stdout:
 usage: jsipdialer

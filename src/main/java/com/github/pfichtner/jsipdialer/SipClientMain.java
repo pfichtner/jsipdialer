@@ -49,6 +49,13 @@ public class SipClientMain {
 							envErrorMessage(USERNAME, ENVVAR_SIP_USERNAME)),
 					requireNonNull(cmdLine.getOptionValue(PASSWORD, env(ENVVAR_SIP_PASSWORD)),
 							envErrorMessage(PASSWORD, ENVVAR_SIP_PASSWORD)));
+			if (cmdLine.hasOption(USERNAME) || cmdLine.hasOption(PASSWORD)) {
+				System.err.println("WARNING: The SIP credentials were passed as command line arguments. "
+						+ "This is insecure because they may be visible to other processes on the system. "
+						+ "Prefer the " + ENVVAR_SIP_USERNAME + " and " + ENVVAR_SIP_PASSWORD
+						+ " environment variables.");
+				System.err.flush();
+			}
 			var serverAddress = cmdLine.getOptionValue(SIP_SERVER_ADDRESS);
 			var serverPort = parseIntOption(cmdLine, SIP_SERVER_PORT, DEFAULT_SIPPORT, 1, 65535);
 			var destinationNumber = cmdLine.getOptionValue(DESTINATION_NUMBER);
