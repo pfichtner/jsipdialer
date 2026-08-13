@@ -1,6 +1,8 @@
 package com.github.pfichtner.jsipdialer;
 
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -17,6 +19,7 @@ import org.mjsip.sip.call.SipUser;
 import org.mjsip.sip.header.CSeqHeader;
 import org.mjsip.sip.header.MaxForwardsHeader;
 import org.mjsip.sip.header.RequestLine;
+import org.mjsip.sip.header.ViaHeader;
 import org.mjsip.sip.message.SipMessage;
 import org.mjsip.sip.message.SipMethods;
 import org.mjsip.sip.provider.ConnectionId;
@@ -44,7 +47,8 @@ public class CallService {
 
 	private CountDownLatch latch;
 	private SipProvider sipProvider;
-	private volatile SipMessage sentInvite;
+	private final Map<String, SipMessage> sentInvites = new ConcurrentHashMap<>();
+	private volatile SipMessage lastSentInvite;
 
 	public CallService(String serverAddress, int serverPort, String username, String password,
 			String destinationNumber, String callerName, int timeoutSeconds, String transport) {
@@ -86,7 +90,11 @@ public class CallService {
 			@Override
 			public ConnectionId sendMessage(SipMessage msg) {
 				if (msg.isInvite()) {
-					sentInvite = msg;
+					lastSentInvite = msg;
+					ViaHeader via = msg.getViaHeader();
+					if (via != null && via.getBranch() != null) {
+						sentInvites.put(via.getBranch(), msg);
+					}
 				}
 				return super.sendMessage(msg);
 			}
@@ -113,32 +121,36 @@ public class CallService {
 				System.err.println("SIP RECV: " + code + " " + reason);
 				System.err.flush();
 				// Fallback: if we see a final response (2xx/4xx except 401/407/5xx/6xx)
-				// that matches our INVITE's Call-ID and the dialog listener
-				// hasn't already handled it, handle it here.
+				// that matches our INVITE and the dialog listener hasn't already
+				// handled it, handle it here.
 				// 401/407 are auth challenges handled by ExtendedInviteDialog
 				// (which re-sends the INVITE with Authorization), so we must NOT
 				// treat them as final — doing so would exit before the re-INVITE.
-				SipMessage invite = sentInvite;
-				// Match only responses to our INVITE, not responses to other
-				// requests (e.g. "200 OK" to our CANCEL on timeout, or "200 OK"
-				// to a BYE). These share the Call-ID but have a different CSeq
-				// method (CANCEL/BYE), and treating them as a successful INVITE
-				// acceptance would make call() wrongly return true on timeout.
-				if (invite != null && !remoteResponded && code >= 200
-						&& code != 401 && code != 407
-						&& isInviteResponse(msg)
-						&& sameCallId(msg, invite)) {
-					System.err.println("CALL: fallback detected final response " + code);
-					System.err.flush();
-					remoteResponded = true;
-					if (code >= 200 && code < 300) {
-						success = true;
-						CallService.this.reason = "OK";
-					} else {
-						success = false;
-						CallService.this.reason = code + " " + reason;
-					}
-					latch.countDown();
+				// The response is only accepted if it is provably a response to an
+				// INVITE we actually sent: its top Via branch, Call-ID and From tag
+				// must all match one of our captured wire INVITEs. Matching the
+				// Call-ID alone would let an attacker on the network forge a final
+				// response and make call() succeed or fail without any call taking
+				// place; the Via branch and From tag are unguessable random values
+				// chosen by mjSIP per request, so only the real endpoint (which
+				// echoes them back) can produce a matching response.
+				if (!remoteResponded && code >= 200 && code != 401 && code != 407) {
+					sentInvites.values().stream()
+							.filter(invite -> isFinalResponseToInvite(msg, invite))
+							.findFirst()
+							.ifPresent(invite -> {
+								System.err.println("CALL: fallback detected final response " + code);
+								System.err.flush();
+								remoteResponded = true;
+								if (code >= 200 && code < 300) {
+									success = true;
+									CallService.this.reason = "OK";
+								} else {
+									success = false;
+									CallService.this.reason = code + " " + reason;
+								}
+								latch.countDown();
+							});
 				}
 			} else {
 				System.err.println("SIP RECV: " + msg.getRequestLine().getMethod() + " "
@@ -291,7 +303,7 @@ public class CallService {
 	// branch-mismatch problem. Building from the captured wire INVITE ensures
 	// the CANCEL carries the exact Via branch Kamailio expects.
 	private void sendCancel() {
-		SipMessage invite = sentInvite;
+		SipMessage invite = lastSentInvite;
 		if (invite == null) {
 			return;
 		}
@@ -326,9 +338,28 @@ public class CallService {
 				.isPresent();
 	}
 
+	static boolean isFinalResponseToInvite(SipMessage response, SipMessage invite) {
+		return isInviteResponse(response)
+				&& sameCallId(response, invite)
+				&& sameViaBranch(response, invite)
+				&& sameFromTag(response, invite);
+	}
+
 	private static boolean sameCallId(SipMessage a, SipMessage b) {
 		var ca = a.getCallIdHeader();
 		var cb = b.getCallIdHeader();
 		return ca != null && cb != null && ca.getCallId().equals(cb.getCallId());
+	}
+
+	private static boolean sameViaBranch(SipMessage a, SipMessage b) {
+		ViaHeader va = a.getViaHeader();
+		ViaHeader vb = b.getViaHeader();
+		return va != null && vb != null && va.getBranch() != null && va.getBranch().equals(vb.getBranch());
+	}
+
+	private static boolean sameFromTag(SipMessage a, SipMessage b) {
+		String ta = a.getFromHeader() == null ? null : a.getFromHeader().getTag();
+		String tb = b.getFromHeader() == null ? null : b.getFromHeader().getTag();
+		return ta != null && ta.equals(tb);
 	}
 }
