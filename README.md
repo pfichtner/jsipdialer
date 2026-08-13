@@ -8,7 +8,7 @@ I needed something to initiate a phone call on my FRITZ!Box without having TR-06
 
 ```sh
 SIP_USERNAME='theSipUser' SIP_PASSWORD='theSipUsersPassword' ./jsipdialer \
-  -sipServerAddress 'sipservername.local' \
+  -sipServerAddress 'fritz.box' \
   -destinationNumber '**9' \
   -callerName "The caller's name to display" \
   -timeout 20
