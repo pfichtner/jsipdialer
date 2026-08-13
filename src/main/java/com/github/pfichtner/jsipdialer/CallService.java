@@ -310,7 +310,7 @@ public class CallService {
 		sipProvider.sendMessage(buildCancelRequest(invite));
 	}
 
-	private static SipMessage buildCancelRequest(SipMessage inviteReq) {
+	static SipMessage buildCancelRequest(SipMessage inviteReq) {
 		SipMessage cancel = new SipMessage();
 		cancel.setRequestLine(
 				new RequestLine(SipMethods.CANCEL, inviteReq.getRequestLine().getAddress()));
@@ -321,7 +321,6 @@ public class CallService {
 		cancel.setCSeqHeader(
 				new CSeqHeader(inviteReq.getCSeqHeader().getSequenceNumber(), SipMethods.CANCEL));
 		cancel.setMaxForwardsHeader(new MaxForwardsHeader(70));
-		cancel.setContactHeader(inviteReq.getContactHeader());
 		cancel.setBody(null, null);
 		return cancel;
 	}

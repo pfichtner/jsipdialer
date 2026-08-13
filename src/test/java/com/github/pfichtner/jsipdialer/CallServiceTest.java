@@ -11,9 +11,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mjsip.sip.address.NameAddress;
 import org.mjsip.sip.address.SipURI;
 import org.mjsip.sip.header.CSeqHeader;
 import org.mjsip.sip.header.CallIdHeader;
+import org.mjsip.sip.header.ContactHeader;
 import org.mjsip.sip.header.FromHeader;
 import org.mjsip.sip.header.RequestLine;
 import org.mjsip.sip.header.SipHeaders;
@@ -96,6 +98,17 @@ class CallServiceTest {
 		SipMessage response = response(200, null, CALL_ID, FROM_TAG, SipMethods.INVITE);
 
 		assertThat(CallService.isFinalResponseToInvite(response, invite)).isFalse();
+	}
+
+	@Test
+	void cancelRequestDoesNotCopyContactHeader() {
+		SipMessage invite = invite(BRANCH, CALL_ID, FROM_TAG);
+		invite.setContactHeader(new ContactHeader(new NameAddress(new SipURI("alice", "example.com"))));
+
+		SipMessage cancel = CallService.buildCancelRequest(invite);
+
+		assertThat(cancel.getRequestLine().getMethod()).isEqualTo(SipMethods.CANCEL);
+		assertThat(cancel.getContactHeader()).isNull();
 	}
 
 	// --- end-to-end test: forged response carrying only the right Call-ID is ignored ---
