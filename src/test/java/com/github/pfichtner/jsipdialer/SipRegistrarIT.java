@@ -44,10 +44,10 @@ class SipRegistrarIT {
 	}
 
 	@Test
-	void callThroughRegistrarOverTcp(@RegisterCallee RegisteredCallee callee) throws Exception {
+	void callThroughRegistrarOverTcp(@RegisterCallee(user = "calleeTcp") RegisteredCallee callee) throws Exception {
 		int callerPort = freePort();
 
-		CallService callService = createCaller(callerPort, "callee", 10, "tcp");
+		CallService callService = createCaller(callerPort, "calleeTcp", 10, "tcp");
 		await().atMost(5, TimeUnit.SECONDS)
 				.alias("call() should return quickly when callee accepts over tcp, not wait for timeout")
 				.untilAsserted(() -> assertThat(callService.call()).isTrue());
