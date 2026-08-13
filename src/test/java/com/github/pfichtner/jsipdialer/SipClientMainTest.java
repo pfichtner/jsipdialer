@@ -30,6 +30,7 @@ class SipClientMainTest {
 	private static final String ARGNAME_DESTINATION_NUMBER = SipClientMain.DESTINATION_NUMBER;
 	private static final String ARGNAME_TIMEOUT = SipClientMain.TIMEOUT;
 	private static final String ARGNAME_TRANSPORT = SipClientMain.TRANSPORT;
+	private static final String ARGNAME_VIA_ADDRESS = SipClientMain.VIA_ADDRESS;
 
 	private static final class SipClientMainSpy extends SipClientMain {
 
@@ -41,11 +42,13 @@ class SipClientMainTest {
 		String callerName;
 		int timeout;
 		String transport;
+		String viaAddress;
 		boolean callServiceReturn;
 
 		@Override
 		protected CallService createCallService(String serverAddress, int serverPort, String username,
-				String password, String destinationNumber, String callerName, int timeout, String transport) {
+				String password, String destinationNumber, String callerName, int timeout, String transport,
+				String viaAddress) {
 			this.serverAddress = serverAddress;
 			this.serverPort = serverPort;
 			this.username = username;
@@ -54,6 +57,7 @@ class SipClientMainTest {
 			this.callerName = callerName;
 			this.timeout = timeout;
 			this.transport = transport;
+			this.viaAddress = viaAddress;
 			return new CallService(null, 0, null, null, null, null, 0, null) {
 				@Override
 				public boolean call() {
@@ -72,7 +76,8 @@ class SipClientMainTest {
 			ARGNAME_CALLER_NAME, "someCallerName", //
 			ARGNAME_DESTINATION_NUMBER, "12345", //
 			ARGNAME_TIMEOUT, SipClientMain.DEFAULT_TIMEOUT + 1, //
-			ARGNAME_TRANSPORT, "tcp" //
+			ARGNAME_TRANSPORT, "tcp", //
+			ARGNAME_VIA_ADDRESS, "192.168.1.50" //
 	));
 
 	final SipClientMainSpy sipClientMainSpy = new SipClientMainSpy();
@@ -172,6 +177,18 @@ class SipClientMainTest {
 	void canSetTransport() throws Exception {
 		callMain(setValuesOn(and(requiredArgs(), ARGNAME_SIP_USERNAME, ARGNAME_SIP_PASSWORD, ARGNAME_TRANSPORT)));
 		assertThat(sipClientMainSpy.transport).isEqualTo(value(ARGNAME_TRANSPORT));
+	}
+
+	@Test
+	void canSetViaAddress() throws Exception {
+		callMain(setValuesOn(and(requiredArgs(), ARGNAME_SIP_USERNAME, ARGNAME_SIP_PASSWORD, ARGNAME_VIA_ADDRESS)));
+		assertThat(sipClientMainSpy.viaAddress).isEqualTo(value(ARGNAME_VIA_ADDRESS));
+	}
+
+	@Test
+	void viaAddressDefaultsToNull() throws Exception {
+		callMain(setValuesOn(and(requiredArgs(), ARGNAME_SIP_USERNAME, ARGNAME_SIP_PASSWORD)));
+		assertThat(sipClientMainSpy.viaAddress).isNull();
 	}
 
 	@Test

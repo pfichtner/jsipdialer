@@ -30,6 +30,7 @@ public class SipClientMain {
 
 	public static final String SIP_SERVER_ADDRESS = "sipServerAddress";
 	public static final String SIP_SERVER_PORT = "sipServerPort";
+	public static final String VIA_ADDRESS = "viaAddress";
 
 	private static final java.util.List<String> SUPPORTED_TRANSPORTS = java.util.List.of(DEFAULT_TRANSPORT, "tcp");
 
@@ -60,6 +61,7 @@ public class SipClientMain {
 			var serverPort = parseIntOption(cmdLine, SIP_SERVER_PORT, DEFAULT_SIPPORT, 1, 65535);
 			var destinationNumber = cmdLine.getOptionValue(DESTINATION_NUMBER);
 			var callerName = cmdLine.getOptionValue(CALLER_NAME);
+			var viaAddress = cmdLine.getOptionValue(VIA_ADDRESS);
 			var timeout = parseIntOption(cmdLine, TIMEOUT, DEFAULT_TIMEOUT, 0, Integer.MAX_VALUE);
 			var transport = cmdLine.getOptionValue(TRANSPORT, DEFAULT_TRANSPORT).toLowerCase();
 			if (!SUPPORTED_TRANSPORTS.contains(transport)) {
@@ -69,10 +71,11 @@ public class SipClientMain {
 			validateNoControlCharacters(serverAddress, SIP_SERVER_ADDRESS);
 			validateNoControlCharacters(destinationNumber, DESTINATION_NUMBER);
 			validateNoControlCharacters(callerName, CALLER_NAME);
+			validateNoControlCharacters(viaAddress, VIA_ADDRESS);
 			validateNoControlCharacters(sipConfig.username(), USERNAME);
 
 			var callService = createCallService(serverAddress, serverPort, sipConfig.username(),
-					sipConfig.password(), destinationNumber, callerName, timeout, transport);
+					sipConfig.password(), destinationNumber, callerName, timeout, transport, viaAddress);
 			if (!callService.call()) {
 				System.err.println("Call failed: " + callService.getReason());
 				return 1;
@@ -86,9 +89,10 @@ public class SipClientMain {
 	}
 
 	protected CallService createCallService(String serverAddress, int serverPort, String username,
-			String password, String destinationNumber, String callerName, int timeout, String transport) {
+			String password, String destinationNumber, String callerName, int timeout, String transport,
+			String viaAddress) {
 		return new CallService(serverAddress, serverPort, username, password,
-				destinationNumber, callerName, timeout, transport);
+				destinationNumber, callerName, timeout, transport, CallService.DEFAULT_LOCAL_PORT, viaAddress);
 	}
 
 	private static String binaryName() {
@@ -141,7 +145,9 @@ public class SipClientMain {
 				.addRequiredOption(DESTINATION_NUMBER, null, true, "the number to call")
 				.addOption(CALLER_NAME, null, true, "the caller's name that gets displayed")
 				.addOption(TIMEOUT, true, "terminate call at most after x seconds")
-				.addOption(TRANSPORT, true, "transport protocol to use (udp or tcp)");
+				.addOption(TRANSPORT, true, "transport protocol to use (udp or tcp)")
+				.addOption(VIA_ADDRESS, true,
+						"ip address to put into the Via header (default: auto-detect local address)");
 	}
 
 	private static String envErrorMessage(String name, String envVar) {

@@ -30,6 +30,8 @@ import org.mjsip.time.SchedulerConfig;
 
 public class CallService {
 
+	public static final int DEFAULT_LOCAL_PORT = 15062;
+
 	private final String serverAddress;
 	private final int serverPort;
 	private final String username;
@@ -39,6 +41,7 @@ public class CallService {
 	private final int timeoutSeconds;
 	private final String transport;
 	private final int localPort;
+	private final String viaAddress;
 
 	private volatile boolean success;
 	private volatile String reason;
@@ -53,11 +56,18 @@ public class CallService {
 	public CallService(String serverAddress, int serverPort, String username, String password,
 			String destinationNumber, String callerName, int timeoutSeconds, String transport) {
 		this(serverAddress, serverPort, username, password, destinationNumber, callerName, timeoutSeconds, transport,
-				15062);
+				DEFAULT_LOCAL_PORT);
 	}
 
 	public CallService(String serverAddress, int serverPort, String username, String password,
 			String destinationNumber, String callerName, int timeoutSeconds, String transport, int localPort) {
+		this(serverAddress, serverPort, username, password, destinationNumber, callerName, timeoutSeconds, transport,
+				localPort, null);
+	}
+
+	public CallService(String serverAddress, int serverPort, String username, String password,
+			String destinationNumber, String callerName, int timeoutSeconds, String transport, int localPort,
+			String viaAddress) {
 		this.serverAddress = serverAddress;
 		this.serverPort = serverPort;
 		this.username = username;
@@ -67,6 +77,7 @@ public class CallService {
 		this.timeoutSeconds = timeoutSeconds;
 		this.transport = transport;
 		this.localPort = localPort;
+		this.viaAddress = viaAddress;
 	}
 
 	public boolean call() throws Exception {
@@ -74,7 +85,9 @@ public class CallService {
 		sipConfig.setTransportProtocols(new String[] { transport });
 		sipConfig.setOutboundProxy(new SipURI(serverAddress, serverPort));
 		sipConfig.setHostPort(localPort);
-		sipConfig.setViaAddrIPv4("127.0.0.1");
+		if (viaAddress != null && !viaAddress.isBlank()) {
+			sipConfig.setViaAddrIPv4(viaAddress);
+		}
 		sipConfig.normalize();
 
 		SchedulerConfig schedulerConfig = new SchedulerConfig();
