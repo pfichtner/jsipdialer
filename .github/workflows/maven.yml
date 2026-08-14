@@ -52,7 +52,7 @@ jobs:
           sudo make install
           sudo cp /usr/local/lib/libz.a /usr/lib/x86_64-linux-musl/
       - name: Build with Maven
-        run: ./mvnw verify
+        run: ./mvnw -DstaticBuild verify
       - name: Publish Test Report
         uses: dorny/test-reporter@v3
         if: always()

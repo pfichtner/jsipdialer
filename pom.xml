@@ -213,8 +213,6 @@
 					<imageName>jsipdialer</imageName>
 					<mainClass>${mainClass}</mainClass>
 					<buildArgs>
-						<buildArg>--static</buildArg>
-						<buildArg>--libc=musl</buildArg>
 						<buildArg>-H:+ReportUnsupportedElementsAtRuntime</buildArg>
 					</buildArgs>
 				</configuration>
@@ -271,5 +269,36 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<!--
+		Build a fully statically linked native executable. Requires a musl
+		toolchain (musl-gcc) plus a musl-built static zlib. Activate with:
+			mvn verify -DstaticBuild
+		-->
+		<profile>
+			<id>static</id>
+			<activation>
+				<property>
+					<name>staticBuild</name>
+				</property>
+			</activation>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.graalvm.buildtools</groupId>
+						<artifactId>native-maven-plugin</artifactId>
+						<configuration>
+							<buildArgs>
+								<buildArg>--static</buildArg>
+								<buildArg>--libc=musl</buildArg>
+								<buildArg>-H:+ReportUnsupportedElementsAtRuntime</buildArg>
+							</buildArgs>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
 </project>

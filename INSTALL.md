@@ -153,6 +153,36 @@ This will:
 6. Run integration tests (11 tests in `SipRegistrarIT`, 9 tests in `SipClientMainNativeIT`)
 7. Verify all tests pass
 
+### Build a fully static native executable
+
+By default the native image is dynamically linked against glibc, so no extra
+tools are required. To produce a fully static executable (as distributed in the
+GitHub releases), pass the `staticBuild` property:
+
+```bash
+mvn clean verify -DstaticBuild
+```
+
+This adds `--static --libc=musl` to the `native-image` build arguments and
+requires a musl toolchain plus a musl-built static zlib:
+
+```bash
+# Debian/Ubuntu
+sudo apt-get install -y musl-tools build-essential wget
+
+# Build a static zlib against musl (Native Image links against it)
+wget -q https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
+tar xf zlib-1.3.1.tar.gz
+cd zlib-1.3.1
+CC=musl-gcc ./configure --static
+make
+sudo make install
+sudo cp /usr/local/lib/libz.a /usr/lib/x86_64-linux-musl/
+```
+
+If the musl toolchain is not installed, `native-image` fails; just build without
+`-DstaticBuild` to get a dynamically linked binary instead.
+
 ### Skip specific phases
 
 ```bash
