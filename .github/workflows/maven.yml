@@ -74,6 +74,7 @@ jobs:
         with:
           name: publish-artifacts-${{ matrix.os }}
           path: "publish-artifacts/*"
+          retention-days: 14
 
   release:
     runs-on: ubuntu-latest
