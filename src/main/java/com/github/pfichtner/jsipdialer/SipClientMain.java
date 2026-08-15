@@ -1,11 +1,13 @@
 package com.github.pfichtner.jsipdialer;
 
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
@@ -32,6 +34,9 @@ public class SipClientMain {
 	public static final String SIP_SERVER_PORT = "sipServerPort";
 	public static final String VIA_ADDRESS = "viaAddress";
 
+	public static final String HELP = "help";
+	public static final String HELP_SHORT_OPT = "h";
+
 	private static final java.util.List<String> SUPPORTED_TRANSPORTS = java.util.List.of(DEFAULT_TRANSPORT, "tcp");
 
 	public static void main(String... args) throws Exception {
@@ -41,6 +46,10 @@ public class SipClientMain {
 
 	public int doMain(String[] args) throws Exception {
 		var options = options();
+		if (isHelpRequested(args)) {
+			printHelp(options);
+			return 0;
+		}
 		var parser = new DefaultParser();
 
 		try {
@@ -83,9 +92,17 @@ public class SipClientMain {
 			return 0;
 		} catch (ParseException e) {
 			e.printStackTrace();
-			new HelpFormatter().printHelp(binaryName(), options);
+			printHelp(options);
 			return 1;
 		}
+	}
+
+	private static void printHelp(Options options) {
+		new HelpFormatter().printHelp(binaryName(), options);
+	}
+
+	private static boolean isHelpRequested(String[] args) {
+		return Arrays.asList(args).contains("-" + HELP_SHORT_OPT) || Arrays.asList(args).contains("--" + HELP);
 	}
 
 	protected CallService createCallService(String serverAddress, int serverPort, String username,
@@ -136,6 +153,7 @@ public class SipClientMain {
 
 	private static Options options() {
 		return new Options()
+				.addOption(Option.builder(HELP_SHORT_OPT).longOpt(HELP).desc("print this help message").build())
 				.addRequiredOption(SIP_SERVER_ADDRESS, null, true, "ip/name of the sip server")
 				.addOption(SIP_SERVER_PORT, null, true, "port number of the sip server")
 				.addOption(USERNAME, true,

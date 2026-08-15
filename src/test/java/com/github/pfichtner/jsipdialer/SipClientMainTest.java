@@ -31,6 +31,8 @@ class SipClientMainTest {
 	private static final String ARGNAME_TIMEOUT = SipClientMain.TIMEOUT;
 	private static final String ARGNAME_TRANSPORT = SipClientMain.TRANSPORT;
 	private static final String ARGNAME_VIA_ADDRESS = SipClientMain.VIA_ADDRESS;
+	private static final String ARGNAME_HELP_SHORT = "-" + SipClientMain.HELP_SHORT_OPT;
+	private static final String ARGNAME_HELP_LONG = "--" + SipClientMain.HELP;
 
 	private static final class SipClientMainSpy extends SipClientMain {
 
@@ -278,6 +280,36 @@ class SipClientMainTest {
 		int exitCode = callMainReturningExitCode(argsWithValue(ARGNAME_SIP_SERVER_ADDRESS, "server\r\nexample.com"));
 		assertThat(exitCode).isEqualTo(1);
 		assertThat(join(stderr.capturedLines())).contains("control characters are not allowed");
+	}
+
+	@Test
+	@StdIo
+	@WritesStdIo
+	void shortHelpOptionPrintsUsage(StdOut stdOut, StdErr stderr) throws Exception {
+		int exitCode = callMainReturningExitCode(ARGNAME_HELP_SHORT);
+		assertThat(exitCode).isZero();
+		assertThat(join(stdOut.capturedLines())).contains("usage: jsipdialer").contains("-h,--help");
+		assertThat(join(stderr.capturedLines())).isEmpty();
+	}
+
+	@Test
+	@StdIo
+	@WritesStdIo
+	void longHelpOptionPrintsUsage(StdOut stdOut, StdErr stderr) throws Exception {
+		int exitCode = callMainReturningExitCode(ARGNAME_HELP_LONG);
+		assertThat(exitCode).isZero();
+		assertThat(join(stdOut.capturedLines())).contains("usage: jsipdialer").contains("-h,--help");
+		assertThat(join(stderr.capturedLines())).isEmpty();
+	}
+
+	@Test
+	@StdIo
+	@WritesStdIo
+	void helpWorksWithoutRequiredArguments(StdOut stdOut, StdErr stderr) throws Exception {
+		int exitCode = callMainReturningExitCode(ARGNAME_HELP_LONG, ARGNAME_HELP_SHORT);
+		assertThat(exitCode).isZero();
+		assertThat(join(stdOut.capturedLines())).contains("usage: jsipdialer").contains("-h,--help");
+		assertThat(join(stderr.capturedLines())).isEmpty();
 	}
 
 	private String[] and(String[] strings, String... others) {
