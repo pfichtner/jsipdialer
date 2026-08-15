@@ -1,0 +1,18 @@
+stderr:
+
+
+stdout:
+usage: jsipdialer
+ -callerName <arg>          the caller's name that gets displayed
+ -destinationNumber <arg>   the number to call
+ -h,--help                  print this help message
+ -sipPassword <arg>         sip password (should better be passed via env
+                            var SIP_PASSWORD)
+ -sipServerAddress <arg>    ip/name of the sip server
+ -sipServerPort <arg>       port number of the sip server
+ -sipUsername <arg>         sip username (should better be passed via env
+                            var SIP_USERNAME)
+ -timeout <arg>             terminate call at most after x seconds
+ -transport <arg>           transport protocol to use (udp or tcp)
+ -viaAddress <arg>          ip address to put into the Via header
+                            (default: auto-detect local address)

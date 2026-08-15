@@ -288,8 +288,7 @@ class SipClientMainTest {
 	void shortHelpOptionPrintsUsage(StdOut stdOut, StdErr stderr) throws Exception {
 		int exitCode = callMainReturningExitCode(ARGNAME_HELP_SHORT);
 		assertThat(exitCode).isZero();
-		assertThat(join(stdOut.capturedLines())).contains("usage: jsipdialer").contains("-h,--help");
-		assertThat(join(stderr.capturedLines())).isEmpty();
+		verifyStdoutAndStderr(stdOut, stderr);
 	}
 
 	@Test
@@ -298,18 +297,17 @@ class SipClientMainTest {
 	void longHelpOptionPrintsUsage(StdOut stdOut, StdErr stderr) throws Exception {
 		int exitCode = callMainReturningExitCode(ARGNAME_HELP_LONG);
 		assertThat(exitCode).isZero();
-		assertThat(join(stdOut.capturedLines())).contains("usage: jsipdialer").contains("-h,--help");
-		assertThat(join(stderr.capturedLines())).isEmpty();
+		verifyStdoutAndStderr(stdOut, stderr);
 	}
 
 	@Test
 	@StdIo
 	@WritesStdIo
-	void helpWorksWithoutRequiredArguments(StdOut stdOut, StdErr stderr) throws Exception {
-		int exitCode = callMainReturningExitCode(ARGNAME_HELP_LONG, ARGNAME_HELP_SHORT);
+	void helpOptionWorksDespiteMissingRequiredArguments(StdOut stdOut, StdErr stderr) throws Exception {
+		int exitCode = callMainReturningExitCode(ARGNAME_HELP_LONG,
+				"-" + ARGNAME_SIP_SERVER_ADDRESS, "some.server.address.local");
 		assertThat(exitCode).isZero();
-		assertThat(join(stdOut.capturedLines())).contains("usage: jsipdialer").contains("-h,--help");
-		assertThat(join(stderr.capturedLines())).isEmpty();
+		verifyStdoutAndStderr(stdOut, stderr);
 	}
 
 	private String[] and(String[] strings, String... others) {
