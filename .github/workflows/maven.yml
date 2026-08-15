@@ -22,12 +22,13 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
           cache: 'maven'
+          cache-jdk: false
           server-id: github
           server-username: GITHUB_ACTOR
           server-password: MAVEN_PKG_TOKEN
       - uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '21'
+          java-version: '21.0.12'
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           native-image-job-reports: 'true'
